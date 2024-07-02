@@ -8,11 +8,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -23,17 +23,21 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
 import com.szabist.zabcafe.viewmodel.RegisterViewModel
 
 @Composable
-fun RegisterScreen(registerViewModel: RegisterViewModel, onRegisterSuccess: () -> Unit) {
+fun RegisterScreen(
+    registerViewModel: RegisterViewModel,
+    navController: NavController
+) {
     val registerState by registerViewModel.registerState.collectAsState()
 
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
-    var role by remember { mutableStateOf("") }
     var contactNumber by remember { mutableStateOf("") }
+    var message by remember { mutableStateOf("") }
 
     Column(
         modifier = Modifier
@@ -73,15 +77,6 @@ fun RegisterScreen(registerViewModel: RegisterViewModel, onRegisterSuccess: () -
         Spacer(modifier = Modifier.height(8.dp))
 
         OutlinedTextField(
-            value = role,
-            onValueChange = { role = it },
-            label = { Text("Role (e.g., admin, student, faculty)") },
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        OutlinedTextField(
             value = contactNumber,
             onValueChange = { contactNumber = it },
             label = { Text("Contact Number") },
@@ -91,7 +86,15 @@ fun RegisterScreen(registerViewModel: RegisterViewModel, onRegisterSuccess: () -
         Spacer(modifier = Modifier.height(16.dp))
 
         Button(
-            onClick = { registerViewModel.registerUser(username, password, email, role, contactNumber) },
+            onClick = {
+                registerViewModel.registerUser(
+                    username = username,
+                    password = password,
+                    email = email,
+                    role = "student",  // Default role
+                    contactNumber = contactNumber
+                )
+            },
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("Register")
@@ -100,16 +103,28 @@ fun RegisterScreen(registerViewModel: RegisterViewModel, onRegisterSuccess: () -
         Spacer(modifier = Modifier.height(8.dp))
 
         when (registerState) {
-            is RegisterViewModel.RegisterState.Loading -> CircularProgressIndicator()
             is RegisterViewModel.RegisterState.Error -> Text(
                 text = (registerState as RegisterViewModel.RegisterState.Error).message,
                 color = MaterialTheme.colorScheme.error
             )
             is RegisterViewModel.RegisterState.Success -> {
-                onRegisterSuccess()
-                Text("Registration successful!", color = MaterialTheme.colorScheme.primary)
+                LaunchedEffect(Unit) {
+                    registerViewModel.resetState() // Reset state after successful registration
+                    navController.navigate("login") {
+                        popUpTo("register") { inclusive = true }
+                    }
+                }
             }
             else -> Unit
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Button(
+            onClick = { navController.navigate("login") },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Back to Login")
         }
     }
 }

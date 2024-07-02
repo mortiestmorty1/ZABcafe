@@ -2,19 +2,30 @@ package com.szabist.zabcafe.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.szabist.zabcafe.model.Order
-import com.szabist.zabcafe.repository.OrderRepository
+import com.szabist.zabcafe.model.CartItem
+import com.szabist.zabcafe.repository.CartRepository
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-class CartViewModel(private val orderRepository: OrderRepository) : ViewModel() {
+class CartViewModel(private val userId: String, private val cartRepository: CartRepository) : ViewModel() {
+    private val _cartItems = MutableStateFlow<List<CartItem>>(emptyList())
+    val cartItems: StateFlow<List<CartItem>> = _cartItems
 
-    private val _cartItems = MutableStateFlow<List<Order.OrderItem>>(emptyList())
-    val cartItems: StateFlow<List<Order.OrderItem>> = _cartItems
+    val cartItemCount: StateFlow<Int> = _cartItems
+        .map { items -> items.sumOf { it.quantity } }
+        .stateIn(
+            scope = CoroutineScope(Dispatchers.Default), // Define coroutine scope
+            started = kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(), // Define when to start collecting
+            initialValue = 0 // Initial value for the StateFlow
+        )
 
-    private val _totalCost = MutableStateFlow(0.0)
-    val totalCost: StateFlow<Double> = _totalCost
+    val total: Double
+        get() = _cartItems.value.sumOf { it.price * it.quantity }
 
     init {
         loadCartItems()
@@ -22,41 +33,31 @@ class CartViewModel(private val orderRepository: OrderRepository) : ViewModel() 
 
     private fun loadCartItems() {
         viewModelScope.launch {
-            val items = orderRepository.fetchCartItems() // Implement this method in your repository
+            val items = cartRepository.getCartItems(userId)
             _cartItems.value = items
-            calculateTotalCost(items)
         }
     }
 
-    fun updateCartItemQuantity(itemId: String, newQuantity: Int) {
+    fun addToCart(item: CartItem) {
         viewModelScope.launch {
-            val updatedItems = _cartItems.value.map {
-                if (it.itemId == itemId) it.copy(quantity = newQuantity) else it
-            }
-            _cartItems.value = updatedItems
-            calculateTotalCost(updatedItems)
-            // Update the repository with the new quantities if needed
-        }
-    }
-    fun removeItemFromCart(itemId: String) {
-        viewModelScope.launch {
-            val updatedItems = _cartItems.value.filterNot { it.itemId == itemId }
-            _cartItems.value = updatedItems
-            calculateTotalCost(updatedItems)
-            orderRepository.removeItemFromCart(itemId)
-        }
-    }
-
-    fun addItemToCart(orderItem: Order.OrderItem) {
-        viewModelScope.launch {
-            val success = orderRepository.addItemToCart(orderItem)
-            if (success) {
-                loadCartItems() // Reload items to reflect the addition
+            if (cartRepository.addCartItem(userId, item)) {
+                loadCartItems()
             }
         }
     }
 
-    private fun calculateTotalCost(items: List<Order.OrderItem>) {
-        _totalCost.value = items.sumOf { it.price * it.quantity }
+    fun removeFromCart(itemId: String) {
+        viewModelScope.launch {
+            if (cartRepository.removeCartItem(userId, itemId)) {
+                loadCartItems()
+            }
+        }
+    }
+
+    fun updateQuantity(itemId: String, quantity: Int) {
+        viewModelScope.launch {
+            cartRepository.updateCartItem(userId, _cartItems.value.first { it.itemId == itemId }.copy(quantity = quantity))
+            loadCartItems()
+        }
     }
 }

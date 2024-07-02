@@ -2,6 +2,7 @@ package com.szabist.zabcafe.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.szabist.zabcafe.model.User
 import com.szabist.zabcafe.repository.UserRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -20,9 +21,13 @@ class LoginViewModel(private val userRepository: UserRepository) : ViewModel() {
 
         viewModelScope.launch {
             _loginState.value = LoginState.Loading
-            val success = userRepository.authenticateUser(username, password)
-            if (success) {
-                _loginState.value = LoginState.Success
+            val user = userRepository.authenticateUser(username, password)
+            if (user != null) {
+                if (userRepository.checkAdminStatus(user.userId)) {
+                    _loginState.value = LoginState.SuccessAdmin(user)
+                } else {
+                    _loginState.value = LoginState.Success(user)
+                }
             } else {
                 _loginState.value = LoginState.Error("Invalid username or password")
             }
@@ -32,7 +37,9 @@ class LoginViewModel(private val userRepository: UserRepository) : ViewModel() {
     sealed class LoginState {
         object Idle : LoginState()
         object Loading : LoginState()
-        object Success : LoginState()
+        data class Success(val user: User) : LoginState()  // Now carries user data
+        data class SuccessAdmin(val user: User) : LoginState()
         data class Error(val message: String) : LoginState()
+
     }
 }

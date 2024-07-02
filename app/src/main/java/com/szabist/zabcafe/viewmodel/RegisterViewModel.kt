@@ -1,5 +1,6 @@
 package com.szabist.zabcafe.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.szabist.zabcafe.model.User
@@ -19,11 +20,33 @@ class RegisterViewModel(private val userRepository: UserRepository) : ViewModel(
             return
         }
 
+        val newUser = User(
+            username = username,
+            password = password,
+            email = email,
+            role = role,
+            contactNumber = contactNumber
+        )
+
         viewModelScope.launch {
             _registerState.value = RegisterState.Loading
-            val success = userRepository.addUser(User(username, password, email, role, contactNumber))
-            _registerState.value = if (success) RegisterState.Success else RegisterState.Error("Registration failed")
+            try {
+                val success = userRepository.addUser(newUser)
+                if (success) {
+                    _registerState.value = RegisterState.Success
+                } else {
+                    _registerState.value = RegisterState.Error("Failed to register user")
+                }
+            } catch (e: Exception) {
+                _registerState.value =
+                    RegisterState.Error("An error occurred: ${e.localizedMessage}")
+                Log.e("RegisterError", "Error registering user: ${e.message}", e)
+            }
         }
+    }
+
+    fun resetState() {
+        _registerState.value = RegisterState.Idle
     }
 
     sealed class RegisterState {

@@ -8,11 +8,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -23,10 +23,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
 import com.szabist.zabcafe.viewmodel.LoginViewModel
 
 @Composable
-fun LoginScreen(loginViewModel: LoginViewModel, onLoginSuccess: () -> Unit) {
+fun LoginScreen(
+    loginViewModel: LoginViewModel,
+    navController: NavController
+) {
     val loginState by loginViewModel.loginState.collectAsState()
 
     var username by remember { mutableStateOf("") }
@@ -69,15 +73,33 @@ fun LoginScreen(loginViewModel: LoginViewModel, onLoginSuccess: () -> Unit) {
 
         Spacer(modifier = Modifier.height(8.dp))
 
+        Button(
+            onClick = { navController.navigate("register") },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Register")
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
         when (loginState) {
-            is LoginViewModel.LoginState.Loading -> CircularProgressIndicator()
             is LoginViewModel.LoginState.Error -> Text(
                 text = (loginState as LoginViewModel.LoginState.Error).message,
                 color = MaterialTheme.colorScheme.error
             )
             is LoginViewModel.LoginState.Success -> {
-                onLoginSuccess()
-                Text("Login successful!", color = MaterialTheme.colorScheme.primary)
+                val user = (loginState as LoginViewModel.LoginState.Success).user
+                LaunchedEffect(user) {
+                    if (user.role == "admin") {
+                        navController.navigate("adminDashboard") {
+                            popUpTo("login") { inclusive = true }
+                        }
+                    } else {
+                        navController.navigate("userDashboard/${user.userId}") { // Ensure the user ID is passed
+                            popUpTo("login") { inclusive = true }
+                        }
+                    }
+                }
             }
             else -> Unit
         }

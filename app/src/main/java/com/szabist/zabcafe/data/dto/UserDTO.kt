@@ -7,5 +7,7 @@ data class UserDTO(
     val username: String = "",
     val email: String = "",
     val role: String = "",  // Example roles could be "admin", "student", "faculty", etc.
-    val contactNumber: String = ""
+    val contactNumber: String = "",
+    val emailValid: Boolean? = true,  // nullable
+    val profileComplete: Boolean? = true  // nullable
 ) : Serializable
