@@ -1,7 +1,6 @@
 package com.szabist.zabcafe
 
 import android.os.Bundle
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
@@ -13,8 +12,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.navigation.NavHostController
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.FirebaseAuth
@@ -22,17 +19,7 @@ import com.szabist.zabcafe.repository.CartRepository
 import com.szabist.zabcafe.repository.MenuRepository
 import com.szabist.zabcafe.repository.OrderRepository
 import com.szabist.zabcafe.repository.UserRepository
-import com.szabist.zabcafe.ui.screens.AddMenuItemScreen
-import com.szabist.zabcafe.ui.screens.AdminDashboard
-import com.szabist.zabcafe.ui.screens.AdminRegisterUserScreen
-import com.szabist.zabcafe.ui.screens.CartScreen
-import com.szabist.zabcafe.ui.screens.EditMenuItemScreen
-import com.szabist.zabcafe.ui.screens.EditUserScreen
-import com.szabist.zabcafe.ui.screens.LoginScreen
-import com.szabist.zabcafe.ui.screens.MenuManagementScreen
-import com.szabist.zabcafe.ui.screens.RegisterScreen
-import com.szabist.zabcafe.ui.screens.UserDashboard
-import com.szabist.zabcafe.ui.screens.UserManagementScreen
+import com.szabist.zabcafe.ui.navigation.AppNavigation
 import com.szabist.zabcafe.ui.theme.ZABcafeTheme
 import com.szabist.zabcafe.viewmodel.AdminDashboardViewModel
 import com.szabist.zabcafe.viewmodel.AdminDashboardViewModelFactory
@@ -61,7 +48,7 @@ class MainActivity : ComponentActivity() {
                 ) {
                     val navController = rememberNavController()
                     SetupAuthenticationListener(navController)
-                    AppNavigation(navController)
+                    AppContent(navController)
                 }
             }
         }
@@ -70,14 +57,12 @@ class MainActivity : ComponentActivity() {
     private fun SetupAuthenticationListener(navController: NavHostController) {
         FirebaseAuth.getInstance().addAuthStateListener { firebaseAuth ->
             if (firebaseAuth.currentUser != null) {
-                // Navigate to dashboard if not already there
                 if (navController.currentDestination?.route != "dashboard") {
                     navController.navigate("dashboard") {
                         popUpTo("login") { inclusive = true }
                     }
                 }
             } else {
-                // Navigate to login if not already there
                 if (navController.currentDestination?.route != "login") {
                     navController.navigate("login") {
                         popUpTo("dashboard") { inclusive = true }
@@ -88,11 +73,12 @@ class MainActivity : ComponentActivity() {
     }
 
     @Composable
-    fun AppNavigation(navController: NavHostController) {
+    fun AppContent(navController: NavHostController) {
         val userRepository = UserRepository()
         val orderRepository = OrderRepository()
         val menuRepository = MenuRepository()
         val cartRepository = CartRepository()
+        val userId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
 
         val registerViewModel: RegisterViewModel =
             viewModelFactoryInstance { RegisterViewModelFactory(userRepository) }
@@ -104,57 +90,21 @@ class MainActivity : ComponentActivity() {
             viewModelFactoryInstance { UserDashboardViewModelFactory(userRepository) }
         val menuViewModel: MenuViewModel =
             viewModelFactoryInstance { MenuViewModelFactory(menuRepository) }
-        val userViewModel : UserViewModel =
-            viewModelFactoryInstance {UserViewModelFactory(userRepository)}
+        val userViewModel: UserViewModel =
+            viewModelFactoryInstance { UserViewModelFactory(userRepository) }
+        val cartViewModel: CartViewModel =
+            viewModelFactoryInstance { CartViewModelFactory(userId, cartRepository) }
 
-        NavHost(navController = navController, startDestination = "login") {
-            composable("login") {
-                val loginViewModel: LoginViewModel = viewModelFactoryInstance {
-                    LoginViewModelFactory(userRepository)
-                }
-                LoginScreen(loginViewModel = loginViewModel, navController = navController)
-            }
-
-            composable("register") {
-                RegisterScreen(registerViewModel = registerViewModel, navController = navController)
-            }
-            composable("adminDashboard") {
-                AdminDashboard(navController = navController)
-            }
-            composable("userDashboard/{userId}") { backStackEntry ->
-                val userId = backStackEntry.arguments?.getString("userId") ?: return@composable
-                UserDashboard(navController, userDashboardViewModel, userId)
-            }
-            composable("menuManagement") {
-                MenuManagementScreen(navController, menuViewModel)
-            }
-            composable("userManagement") {
-                UserManagementScreen(navController = navController, userViewModel = userViewModel)
-            }
-            composable("addUser") {
-                AdminRegisterUserScreen(navController = navController, userViewModel = userViewModel)
-            }
-            composable("editUser/{userId}") { backStackEntry ->
-                val userId = backStackEntry.arguments?.getString("userId") ?: return@composable
-                Log.d("MainActivity", "Navigating to EditUserScreen with userId: $userId")
-                EditUserScreen(navController, userId, userViewModel)
-            }
-            composable("menuManagement") {
-                MenuManagementScreen(navController = navController, menuViewModel = menuViewModel)
-            }
-            composable("addMenuItem") {
-                AddMenuItemScreen(navController = navController, menuViewModel = menuViewModel)
-            }
-            composable("editMenuItem/{menuItemId}") { backStackEntry ->
-                val menuItemId = backStackEntry.arguments?.getString("menuItemId") ?: return@composable
-                EditMenuItemScreen(navController, menuViewModel, menuItemId)
-            }
-            composable("cart") {
-                val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return@composable
-                val cartViewModel: CartViewModel = viewModelFactoryInstance { CartViewModelFactory(userId, cartRepository) }
-                CartScreen(navController, cartViewModel)
-            }
-        }
+        AppNavigation(
+            navController = navController,
+            registerViewModel = registerViewModel,
+            loginViewModel = loginViewModel,
+            adminDashboardViewModel = adminDashboardViewModel,
+            userDashboardViewModel = userDashboardViewModel,
+            menuViewModel = menuViewModel,
+            userViewModel = userViewModel,
+            cartViewModel = cartViewModel
+        )
     }
 
     @Composable

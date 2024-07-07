@@ -11,7 +11,8 @@ data class MenuItem(
     val description: String = "",
     val price: Double = 0.0,
     val category: String = "",  // Categories like "Beverages", "Snacks", etc.
-    val isAvailable: Boolean = true  // Availability might change based on stock or time of day.
+    val isAvailable: Boolean = true, // Availability might change based on stock or time of day.
+    val quantity: Int = 0
 ) : Serializable {
     // Optionally, you can add methods here to manage stock or handle other business logic.
 }

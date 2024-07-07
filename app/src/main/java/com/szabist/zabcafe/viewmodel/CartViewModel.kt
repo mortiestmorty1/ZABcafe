@@ -21,7 +21,7 @@ class CartViewModel(private val userId: String, private val cartRepository: Cart
         .stateIn(
             scope = CoroutineScope(Dispatchers.Default), // Define coroutine scope
             started = kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(), // Define when to start collecting
-            initialValue = 0 // Initial value for the StateFlow
+            initialValue = 0
         )
 
     val total: Double
@@ -38,10 +38,11 @@ class CartViewModel(private val userId: String, private val cartRepository: Cart
         }
     }
 
-    fun addToCart(item: CartItem) {
+    fun addToCart(userId: String, item: CartItem) {
         viewModelScope.launch {
-            if (cartRepository.addCartItem(userId, item)) {
-                loadCartItems()
+            val success = cartRepository.addCartItem(userId, item)
+            if (success) {
+                loadCartItems()  // Assuming loadCartItems also needs userId
             }
         }
     }
