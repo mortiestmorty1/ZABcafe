@@ -11,11 +11,11 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.FirebaseAuth
-import com.szabist.zabcafe.repository.CartRepository
 import com.szabist.zabcafe.repository.MenuRepository
 import com.szabist.zabcafe.repository.OrderRepository
 import com.szabist.zabcafe.repository.UserRepository
@@ -47,8 +47,11 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     val navController = rememberNavController()
+                    val userId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+                    val orderRepository = OrderRepository()
+                    val cartViewModel: CartViewModel = viewModel(factory = CartViewModelFactory(userId,orderRepository))
                     SetupAuthenticationListener(navController)
-                    AppContent(navController)
+                    AppContent(navController, cartViewModel)
                 }
             }
         }
@@ -73,11 +76,10 @@ class MainActivity : ComponentActivity() {
     }
 
     @Composable
-    fun AppContent(navController: NavHostController) {
+    fun AppContent(navController: NavHostController, cartViewModel: CartViewModel) {
         val userRepository = UserRepository()
         val orderRepository = OrderRepository()
         val menuRepository = MenuRepository()
-        val cartRepository = CartRepository()
         val userId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
 
         val registerViewModel: RegisterViewModel =
@@ -93,8 +95,7 @@ class MainActivity : ComponentActivity() {
         val userViewModel: UserViewModel =
             viewModelFactoryInstance { UserViewModelFactory(userRepository) }
         val cartViewModel: CartViewModel =
-            viewModelFactoryInstance { CartViewModelFactory(userId, cartRepository) }
-
+            viewModelFactoryInstance { CartViewModelFactory(userId, orderRepository) }
         AppNavigation(
             navController = navController,
             registerViewModel = registerViewModel,

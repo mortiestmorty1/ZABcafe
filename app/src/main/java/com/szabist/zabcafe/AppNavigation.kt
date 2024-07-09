@@ -1,18 +1,14 @@
 package com.szabist.zabcafe.ui.navigation
 
-import android.util.Log
 import androidx.compose.runtime.Composable
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import com.google.firebase.auth.FirebaseAuth
 import com.szabist.zabcafe.ui.screens.AddMenuItemScreen
 import com.szabist.zabcafe.ui.screens.AdminDashboard
 import com.szabist.zabcafe.ui.screens.AdminRegisterUserScreen
 import com.szabist.zabcafe.ui.screens.CartScreen
+import com.szabist.zabcafe.ui.screens.CheckoutScreen
 import com.szabist.zabcafe.ui.screens.EditMenuItemScreen
 import com.szabist.zabcafe.ui.screens.EditUserScreen
 import com.szabist.zabcafe.ui.screens.LoginScreen
@@ -22,9 +18,7 @@ import com.szabist.zabcafe.ui.screens.UserDashboard
 import com.szabist.zabcafe.ui.screens.UserManagementScreen
 import com.szabist.zabcafe.viewmodel.AdminDashboardViewModel
 import com.szabist.zabcafe.viewmodel.CartViewModel
-import com.szabist.zabcafe.viewmodel.CartViewModelFactory
 import com.szabist.zabcafe.viewmodel.LoginViewModel
-import com.szabist.zabcafe.viewmodel.LoginViewModelFactory
 import com.szabist.zabcafe.viewmodel.MenuViewModel
 import com.szabist.zabcafe.viewmodel.RegisterViewModel
 import com.szabist.zabcafe.viewmodel.UserDashboardViewModel
@@ -77,6 +71,9 @@ fun AppNavigation(
         }
         composable("cart") {
             CartScreen(navController, cartViewModel)
+        }
+        composable("checkout") {
+            CheckoutScreen(navController, cartViewModel)
         }
     }
 }

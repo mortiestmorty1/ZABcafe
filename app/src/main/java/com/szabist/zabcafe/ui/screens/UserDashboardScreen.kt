@@ -44,8 +44,8 @@ fun UserDashboard(
 ) {
     val navHostController = rememberNavController()
     val screens = listOf(
-        DashboardScreen.ViewBills,
         DashboardScreen.Menu,
+        DashboardScreen.ViewBills,
         DashboardScreen.PastOrders,
         DashboardScreen.OrderStatus
     )
@@ -57,8 +57,8 @@ fun UserDashboard(
             TopAppBar(
                 title = { Text("User Dashboard") },
                 actions = {
-                    IconButton(onClick = { navController.navigate("cart") }) {
-                        BadgeBox(cartItemCount)
+                    IconButton(onClick = { navHostController.navigate("cart") }) {
+                        BadgeBox(cartViewModel)
                     }
                 }
             )
@@ -88,19 +88,17 @@ fun UserDashboard(
     ) { innerPadding ->
         NavHost(
             navController = navHostController,
-            startDestination = DashboardScreen.ViewBills.route,
+            startDestination = DashboardScreen.Menu.route,
             modifier = Modifier.padding(innerPadding)
         ) {
-            composable(DashboardScreen.ViewBills.route) { ViewBillsScreen() }
             composable(DashboardScreen.Menu.route) { MenuScreen(menuViewModel, cartViewModel, userId) }
+            composable(DashboardScreen.ViewBills.route) { ViewBillsScreen() }
             composable(DashboardScreen.PastOrders.route) { PastOrdersScreen() }
             composable(DashboardScreen.OrderStatus.route) { OrderStatusScreen() }
+            composable("cart") { CartScreen(navController, cartViewModel) }
         }
     }
 }
-
-@Composable
-fun ViewBillsScreen() { /* Content for View Bills */ }
 
 @Composable
 fun MenuScreen(menuViewModel: MenuViewModel, cartViewModel: CartViewModel, userId: String) {
@@ -116,11 +114,15 @@ fun MenuScreen(menuViewModel: MenuViewModel, cartViewModel: CartViewModel, userI
                     quantity = 1,
                     userId = userId
                 )
-                cartViewModel.addToCart(userId, cartItem)
+                cartViewModel.addToCart(cartItem)
             })
         }
     }
 }
+
+@Composable
+fun ViewBillsScreen() { /* Content for View Bills */ }
+
 
 @Composable
 fun PastOrdersScreen() { /* Content for Past Orders */ }
@@ -129,7 +131,8 @@ fun PastOrdersScreen() { /* Content for Past Orders */ }
 fun OrderStatusScreen() { /* Content for Order Status */ }
 
 @Composable
-fun BadgeBox(cartItemCount: Int) {
+fun BadgeBox(cartViewModel: CartViewModel) {
+    val cartItemCount by cartViewModel.cartItemCount.collectAsState()
     Box(contentAlignment = Alignment.TopEnd) {
         Icon(Icons.Filled.ShoppingCart, contentDescription = "Cart")
         if (cartItemCount > 0) {

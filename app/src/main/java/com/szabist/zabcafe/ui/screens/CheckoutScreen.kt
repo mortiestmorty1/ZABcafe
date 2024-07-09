@@ -15,37 +15,53 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import com.szabist.zabcafe.model.CartItem
 import com.szabist.zabcafe.viewmodel.CartViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CartScreen(navController: NavController, cartViewModel: CartViewModel) {
-    val cartItems = cartViewModel.cartItems.collectAsState().value
+fun CheckoutScreen(navController: NavController, cartViewModel: CartViewModel) {
+    val cartItems by cartViewModel.cartItems.collectAsState()
+    val total = cartViewModel.total
 
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text("Shopping Cart") })
+            TopAppBar(title = { Text("Checkout") })
         }
     ) { innerPadding ->
-        Column(modifier = Modifier.padding(innerPadding).padding(16.dp)) {
+        Column(
+            modifier = Modifier.padding(innerPadding).padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
             if (cartItems.isEmpty()) {
-                Text("Your cart is empty", style = MaterialTheme.typography.headlineMedium, modifier = Modifier.align(Alignment.CenterHorizontally))
+                Text(
+                    "Your cart is empty",
+                    style = MaterialTheme.typography.headlineMedium,
+                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                )
             } else {
                 cartItems.forEach { item ->
-                    CartItemView(item, cartViewModel::updateQuantity, cartViewModel::removeFromCart)
+                    CheckoutItemView(item)
                 }
                 Spacer(modifier = Modifier.height(16.dp))
-                Text("Total: ${cartViewModel.total}", style = MaterialTheme.typography.titleLarge)
+                Text("Total: $total", style = MaterialTheme.typography.titleLarge)
                 Button(
-                    onClick = { navController.navigate("checkout") },
+                    onClick = {
+                        // Add order logic
+                        cartViewModel.addOrder()
+                        navController.navigate("userDashboard") {
+                            popUpTo(navController.graph.findStartDestination().id) { inclusive = true }
+                        }
+                    },
                     modifier = Modifier.align(Alignment.CenterHorizontally)
                 ) {
-                    Text("Checkout")
+                    Text("Add to Bill")
                 }
             }
         }
@@ -53,28 +69,12 @@ fun CartScreen(navController: NavController, cartViewModel: CartViewModel) {
 }
 
 @Composable
-fun CartItemView(
-    item: CartItem,
-    updateQuantity: (String, Int) -> Unit,
-    removeFromCart: (String) -> Unit
-) {
+fun CheckoutItemView(item: CartItem) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp),
+        modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Text("${item.name} x${item.quantity}")
-        Row {
-            Button(onClick = { updateQuantity(item.itemId, item.quantity + 1) }) {
-                Text("+")
-            }
-            Button(onClick = { if (item.quantity > 1) updateQuantity(item.itemId, item.quantity - 1) }) {
-                Text("-")
-            }
-            Button(onClick = { removeFromCart(item.itemId) }) {
-                Text("Remove")
-            }
-        }
+        Text("Price: ${item.price * item.quantity}")
     }
 }

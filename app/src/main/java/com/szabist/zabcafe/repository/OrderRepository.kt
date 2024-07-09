@@ -69,35 +69,4 @@ class OrderRepository {
         val snapshot = cartRef.get().await()
         return@withContext snapshot.children.mapNotNull { it.getValue<Order.OrderItem>() }
     }
-
-    // Update cart item quantity
-    suspend fun updateCartItemQuantity(itemId: String, quantity: Int): Boolean = withContext(Dispatchers.IO) {
-        return@withContext try {
-            cartRef.child(itemId).child("quantity").setValue(quantity).await()
-            true
-        } catch (e: Exception) {
-            false
-        }
-    }
-
-    // Add item to cart
-    suspend fun addItemToCart(orderItem: Order.OrderItem): Boolean = withContext(Dispatchers.IO) {
-        return@withContext try {
-            val key = cartRef.push().key ?: throw Exception("Invalid key")
-            cartRef.child(key).setValue(orderItem).await()
-            true
-        } catch (e: Exception) {
-            false
-        }
-    }
-
-    // Remove item from cart
-    suspend fun removeItemFromCart(itemId: String): Boolean = withContext(Dispatchers.IO) {
-        return@withContext try {
-            cartRef.child(itemId).removeValue().await()
-            true
-        } catch (e: Exception) {
-            false
-        }
-    }
 }
