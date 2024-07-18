@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "416357873376",
+    "project_id": "zabcafe1",
+    "storage_bucket": "zabcafe1.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:416357873376:android:db15b379d2a08a9ffd8285",
+        "android_client_info": {
+          "package_name": "com.szabist.zabapp1"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAxeNlbs_EIISbwD3dwhKUCyTKoJ_ew7EY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
