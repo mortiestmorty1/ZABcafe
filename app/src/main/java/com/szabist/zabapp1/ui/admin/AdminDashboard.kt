@@ -67,7 +67,7 @@ fun AdminDashboard(adminViewModel: AdminViewModel = viewModel()) {
                 ManageMenuScreen(navController = navController)
             }
             composable(AdminNavItem.Orders.route) {
-                ViewOrdersScreen()
+                ViewOrdersScreen(navController = navController, orderViewModel = viewModel())
             }
             composable(AdminNavItem.Users.route) {
                 ManageUsersScreen(navController = navController)
@@ -96,6 +96,7 @@ fun AdminDashboard(adminViewModel: AdminViewModel = viewModel()) {
                 val userId = backStackEntry.arguments?.getString("userId") ?: return@composable
                 UserDetailsScreen(navController, userId)
             }
+
         }
     }
 }

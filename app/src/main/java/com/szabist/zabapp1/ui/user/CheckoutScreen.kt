@@ -1,5 +1,7 @@
 package com.szabist.zabapp1.ui.user
 
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -21,6 +23,7 @@ import com.szabist.zabapp1.data.model.Order
 import com.szabist.zabapp1.viewmodel.CartViewModel
 import com.szabist.zabapp1.viewmodel.OrderViewModel
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun CheckoutScreen(
     navController: NavController,
@@ -50,7 +53,7 @@ fun CheckoutScreen(
                     totalAmount = subtotal,
                     status = "pending"
                 )
-                orderViewModel.addOrder(order) { completedOrder ->
+                orderViewModel.addOrder(order, userId) { completedOrder ->
                     navController.navigate("order_status") {
                         popUpTo("menu") { inclusive = true }
                     }

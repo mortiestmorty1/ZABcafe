@@ -1,5 +1,7 @@
 package com.szabist.zabapp1.ui.user
 
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.offset
@@ -38,6 +40,7 @@ import androidx.navigation.compose.rememberNavController
 import com.szabist.zabapp1.viewmodel.CartViewModel
 import com.szabist.zabapp1.viewmodel.UserViewModel
 
+@RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UserDashboard(userId: String, userViewModel: UserViewModel = viewModel(), cartViewModel: CartViewModel = viewModel()) {
@@ -112,7 +115,7 @@ fun UserDashboard(userId: String, userViewModel: UserViewModel = viewModel(), ca
                 OrderStatusScreen(navController = navController, userId = userId, orderViewModel = viewModel())
             }
             composable(UserNavItem.MonthlyBilling.route) {
-                MonthlyBillingScreen(navController = navController)
+                MonthlyBillingScreen(navController = navController, userId = userId, monthlyBillViewModel = viewModel())
             }
             composable(UserNavItem.PastOrders.route) {
                 PastOrdersScreen(navController = navController, userId = userId, orderViewModel = viewModel())
@@ -129,6 +132,13 @@ fun UserDashboard(userId: String, userViewModel: UserViewModel = viewModel(), ca
             }
             composable("checkout") {
                 CheckoutScreen(navController = navController, userId = userId, cartViewModel = cartViewModel, orderViewModel = viewModel())
+            }
+            composable("bill_details/{billId}") { backStackEntry ->
+                BillDetailsScreen(
+                    navController = navController,
+                    billId = backStackEntry.arguments?.getString("billId") ?: "",
+                    viewModel = viewModel()
+                )
             }
         }
     }

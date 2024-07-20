@@ -34,8 +34,7 @@ fun PastOrdersScreen(navController: NavController, userId: String, orderViewMode
     LazyColumn(modifier = Modifier.padding(16.dp)) {
         items(pastOrders, key = { it.id }) { order ->
             OrderItem1(order, onOrderSelected = { selectedOrder ->
-                // This could navigate to an order details screen where you might handle order status updates
-                // Example: navController.navigate("order_details/${selectedOrder.id}")
+                navController.navigate("order_details/${selectedOrder.id}")
             })
         }
     }
