@@ -5,8 +5,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.MaterialTheme
 import androidx.compose.material3.Button
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
@@ -37,7 +37,7 @@ fun EditUserScreen(navController: NavController, userId: String, userViewModel: 
 
     // Handle null user by showing a loading indicator or a message
     if (user == null) {
-        Text("Loading or no user found", style = MaterialTheme.typography.h6)
+        Text("Loading or no user found", style = MaterialTheme.typography.displayMedium)
     } else {
         UserEditForm(user, navController, userViewModel)
     }

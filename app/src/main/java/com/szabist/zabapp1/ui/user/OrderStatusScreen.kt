@@ -23,19 +23,18 @@ import com.szabist.zabapp1.viewmodel.OrderViewModel
 
 @Composable
 fun OrderStatusScreen(navController: NavController, userId: String, orderViewModel: OrderViewModel = viewModel()) {
-    // Load orders when the screen is first composed or when userId changes
+    // Load active orders when the screen is first composed or when userId changes
     LaunchedEffect(userId) {
         orderViewModel.loadOrders(userId)
     }
 
-    // Collect the latest list of orders from the ViewModel
+    // Collect the latest list of active orders from the ViewModel
     val orders by orderViewModel.orders.collectAsState()
 
     LazyColumn(modifier = Modifier.padding(16.dp)) {
         items(orders, key = { it.id }) { order ->
             OrderItem(order, onOrderSelected = { selectedOrder ->
-                // This could navigate to an order details screen where you might handle order status updates
-                // Example: navController.navigate("order_details/${selectedOrder.id}")
+                navController.navigate("order_details/${selectedOrder.id}")
             })
         }
     }

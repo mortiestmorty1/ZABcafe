@@ -33,25 +33,30 @@ fun CartScreen(navController: NavController, cartViewModel: CartViewModel = view
     val cartItems by cartViewModel.cartItems.collectAsState()
 
     Column(modifier = Modifier.padding(16.dp)) {
-        LazyColumn {
-            items(cartItems) { cartItem ->
-                CartItemCard(
-                    cartItem = cartItem,
-                    increaseQuantity = { cartViewModel.increaseItemQuantity(cartItem.menuItem) },
-                    decreaseQuantity = { cartViewModel.decreaseItemQuantity(cartItem.menuItem) },
-                    removeItem = { cartViewModel.removeItemFromCart(cartItem.menuItem) }
-                )
+        if (cartItems.isEmpty()) {
+            // Show a message when the cart is empty
+            Text("Your cart is empty", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(top = 20.dp, bottom = 20.dp))
+        } else {
+            LazyColumn {
+                items(cartItems) { cartItem ->
+                    CartItemCard(
+                        cartItem = cartItem,
+                        increaseQuantity = { cartViewModel.increaseItemQuantity(cartItem.menuItem) },
+                        decreaseQuantity = { cartViewModel.decreaseItemQuantity(cartItem.menuItem) },
+                        removeItem = { cartViewModel.removeItemFromCart(cartItem.menuItem) }
+                    )
+                }
             }
-        }
-        val subtotal = cartItems.sumOf { it.quantity * it.menuItem.price }
-        Text("Subtotal: $$subtotal", style = MaterialTheme.typography.titleSmall)
-        Button(
-            onClick = {
-                navController.navigate("checkout")
-            },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Proceed to Checkout")
+            val subtotal = cartItems.sumOf { it.quantity * it.menuItem.price }
+            Text("Subtotal: $$subtotal", style = MaterialTheme.typography.titleSmall)
+            Button(
+                onClick = {
+                    navController.navigate("checkout")
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Proceed to Checkout")
+            }
         }
     }
 }

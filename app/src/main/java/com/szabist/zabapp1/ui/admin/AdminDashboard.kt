@@ -1,13 +1,18 @@
 package com.szabist.zabapp1.ui.admin
 
+import ViewOrdersScreen
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
@@ -23,9 +28,10 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.szabist.zabapp1.viewmodel.AdminViewModel
 
+@RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AdminDashboard(adminViewModel: AdminViewModel = viewModel()) {
+fun AdminDashboard(onLogout: () -> Unit,adminViewModel: AdminViewModel = viewModel()) {
     val navController = rememberNavController()
     val items = listOf(
         AdminNavItem.Menu,
@@ -35,8 +41,17 @@ fun AdminDashboard(adminViewModel: AdminViewModel = viewModel()) {
     )
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("Admin Dashboard") }) },
-        bottomBar = {
+        topBar = {
+            TopAppBar(
+                title = { Text("Admin Dashboard") },
+                actions = {
+                    // Adding an IconButton to the TopAppBar for logging out
+                    IconButton(onClick = onLogout) {
+                        Icon(imageVector = Icons.Filled.Close, contentDescription = "Logout")
+                    }
+                }
+            )
+        },bottomBar = {
             NavigationBar {
                 items.forEach { item ->
                     NavigationBarItem(

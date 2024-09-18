@@ -78,10 +78,15 @@ fun RegisterScreen(
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
             RadioButton(
-                selected = role == "user",
-                onClick = { role = "user" }
+                selected = role == "student",
+                onClick = { role = "student" }
             )
-            Text("User")
+            Text("student")
+            RadioButton(
+                selected = role == "teacher",
+                onClick = { role = "teacher" }
+            )
+            Text("teacher")
             RadioButton(
                 selected = role == "admin",
                 onClick = { role = "admin" }

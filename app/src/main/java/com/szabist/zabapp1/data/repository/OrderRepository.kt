@@ -13,17 +13,24 @@ import com.szabist.zabapp1.data.model.Order
 class OrderRepository {
     private val ordersRef: DatabaseReference = FirebaseService.getDatabaseReference("orders")
 
-    fun addOrder(order: Order, onSuccess: (Order) -> Unit) {
+
+    fun addOrder(order: Order, onSuccess: (Boolean, String?) -> Unit) {
         val key = ordersRef.push().key
         if (key != null) {
             order.id = key  // Set the order ID
             ordersRef.child(key).setValue(order).addOnSuccessListener {
-                onSuccess(order)
+                Log.d("OrderRepository", "Order successfully added with ID: $key")
+                onSuccess(true, key)  // Pass the order ID on success
             }.addOnFailureListener {
                 Log.e("OrderRepository", "Failed to add order: ", it)
+                onSuccess(false, null)
             }
+        } else {
+            Log.e("OrderRepository", "Failed to generate a key for the new order")
+            onSuccess(false, null)
         }
     }
+
     fun getOrderById(orderId: String, callback: (Order?) -> Unit) {
         ordersRef.child(orderId).get().addOnSuccessListener { snapshot ->
             val order = snapshot.getValue(Order::class.java)
@@ -36,7 +43,7 @@ class OrderRepository {
     fun getPastOrders(userId: String, callback: (List<Order>) -> Unit) {
         ordersRef.orderByChild("userId").equalTo(userId).get().addOnSuccessListener { snapshot ->
             val orders = snapshot.children.mapNotNull { it.getValue(Order::class.java) }
-                .filter { it.status == "pickedup" }
+                .filter { it.status == "Completed" || it.status == "Rejected" }
             callback(orders)
         }.addOnFailureListener {
             Log.e("OrderRepository", "Error fetching past orders for userId $userId", it)
@@ -45,9 +52,7 @@ class OrderRepository {
 
     fun getOrders(userId: String, callback: (List<Order>) -> Unit) {
         ordersRef.orderByChild("userId").equalTo(userId).get().addOnSuccessListener { snapshot ->
-            val orders = snapshot.children.mapNotNull { it.getValue(Order::class.java) }.also {
-                Log.d("OrderRepository", "Fetched orders for userId $userId: $it")
-            }
+            val orders = snapshot.children.mapNotNull { it.getValue(Order::class.java) }
             callback(orders)
         }.addOnFailureListener {
             Log.e("OrderRepository", "Error fetching orders for userId $userId", it)

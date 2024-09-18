@@ -23,30 +23,34 @@ import com.szabist.zabapp1.viewmodel.OrderViewModel
 
 @Composable
 fun PastOrdersScreen(navController: NavController, userId: String, orderViewModel: OrderViewModel = viewModel()) {
-    // Load past orders when the screen is first composed or when userId changes
-    LaunchedEffect(userId) {
+    // Trigger past order loading
+    LaunchedEffect(key1 = userId) {
         orderViewModel.loadPastOrders(userId)
     }
 
-    // Collect the latest list of past orders from the ViewModel
+    // Collect past orders
     val pastOrders by orderViewModel.pastOrders.collectAsState()
 
+    // UI to display past orders
     LazyColumn(modifier = Modifier.padding(16.dp)) {
-        items(pastOrders, key = { it.id }) { order ->
-            OrderItem1(order, onOrderSelected = { selectedOrder ->
-                navController.navigate("order_details/${selectedOrder.id}")
-            })
+        if (pastOrders.isEmpty()) {
+            item { Text("No past orders available.", modifier = Modifier.padding(16.dp)) }
+        } else {
+            items(pastOrders, key = { it.id }) { order ->
+                OrderItem1(order, onOrderSelected = { selectedOrder ->
+                    navController.navigate("order_details/${selectedOrder.id}")
+                })
+            }
         }
     }
 }
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OrderItem1(order: Order, onOrderSelected: (Order) -> Unit) {
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp),
+        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
         onClick = { onOrderSelected(order) }
     ) {
         Column(
@@ -56,7 +60,6 @@ fun OrderItem1(order: Order, onOrderSelected: (Order) -> Unit) {
             Text("Order ID: ${order.id}", style = MaterialTheme.typography.bodyLarge)
             Text("Total Amount: ${order.totalAmount}", style = MaterialTheme.typography.bodyLarge)
             Text("Status: ${order.status}", style = MaterialTheme.typography.bodyMedium)
-            // Add more details as needed
         }
     }
 }

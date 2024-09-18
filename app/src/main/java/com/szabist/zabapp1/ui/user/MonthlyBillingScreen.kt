@@ -1,5 +1,6 @@
 package com.szabist.zabapp1.ui.user
 
+
 import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.Column
@@ -31,49 +32,66 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.szabist.zabapp1.data.model.MonthlyBill
 import com.szabist.zabapp1.viewmodel.MonthlyBillViewModel
-import java.time.LocalDate
-import java.time.format.DateTimeFormatter
+import com.szabist.zabapp1.viewmodel.UserViewModel
 
 
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MonthlyBillingScreen(navController: NavController, userId: String, monthlyBillViewModel: MonthlyBillViewModel = viewModel()) {
-    LaunchedEffect(userId) {
+fun MonthlyBillingScreen(
+    navController: NavController,
+    userId: String,
+    userViewModel: UserViewModel = viewModel()  // Assuming UserViewModel can provide the user's role
+) {
+    val monthlyBillViewModel: MonthlyBillViewModel = viewModel()
+
+    // Load user details and bills when the component is composed
+    LaunchedEffect(key1 = userId) {
+        userViewModel.fetchUserById(userId)
         monthlyBillViewModel.loadBillsForUser(userId)
     }
 
+    // Collect the necessary states
     val bills by monthlyBillViewModel.monthlyBills.collectAsState()
+    val currentUserRole by userViewModel.currentUserRole.collectAsState(initial = "")
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("Monthly Bills") }) },
-        content = { padding ->
+        topBar = { TopAppBar(title = { Text("Monthly Bills") }) }
+    ) { padding ->
+        if (currentUserRole in listOf("teacher", "hostilities")) {
+            // User has access
             LazyColumn(modifier = Modifier.padding(padding)) {
                 if (bills.isEmpty()) {
-                    item { Text("No orders made this month.", modifier = Modifier.padding(16.dp)) }
+                    item { Text("No bills available.", modifier = Modifier.padding(16.dp)) }
                 } else {
                     items(bills.sortedByDescending { it.month }) { bill ->
-                        BillItem(bill, navController)
+                        BillItem(bill) { billId ->
+                            navController.navigate("bill_details/$billId")
+                        }
                     }
                 }
             }
+        } else {
+            // User does not have access
+            Column(modifier = Modifier.padding(padding).fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("You do not have access to view this page.", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.error)
+                Button(onClick = { navController.popBackStack() }) {
+                    Text("Go Back")
+                }
+            }
         }
-    )
+    }
 }
 
-@RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun BillItem(bill: MonthlyBill, navController: NavController) {
-    val currentMonth = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM"))
-
+fun BillItem(bill: MonthlyBill, navigateToDetails: (String) -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(8.dp),
-        onClick = {
-            navController.navigate("bill_details/${bill.billId}")
-        }
+        onClick = { navigateToDetails(bill.billId) }
     ) {
         Row(
             modifier = Modifier.padding(16.dp),
@@ -84,29 +102,11 @@ fun BillItem(bill: MonthlyBill, navController: NavController) {
                 Text("Total: $${bill.amount}", style = MaterialTheme.typography.bodyLarge)
             }
 
-            // Check if it's the current month
-            if (bill.month == currentMonth) {
-                Icon(
-                    imageVector = Icons.Filled.CheckCircle,
-                    contentDescription = "Current Month",
-                    tint = Color.Blue
-                )
-            }
-
             Icon(
                 imageVector = if (bill.paid) Icons.Filled.CheckCircle else Icons.Filled.Warning,
                 contentDescription = if (bill.paid) "Paid" else "Unpaid",
                 tint = if (bill.paid) Color.Green else Color.Red
             )
-
-            if (!bill.paid && bill.flaggedAsPaid) {
-                Button(
-                    onClick = { /* Navigate to verification screen or directly handle verification */ },
-                    modifier = Modifier.padding(start = 8.dp)
-                ) {
-                    Text("Verify Payment")
-                }
-            }
         }
     }
 }

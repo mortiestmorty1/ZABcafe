@@ -5,20 +5,15 @@ import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.szabist.zabapp1.data.model.MonthlyBill
 import com.szabist.zabapp1.data.model.Order
-import com.szabist.zabapp1.data.repository.MonthlyBillRepository
 import com.szabist.zabapp1.data.repository.OrderRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import java.time.LocalDate
-import java.time.format.DateTimeFormatter
 
 class OrderViewModel : ViewModel() {
     private val orderRepository = OrderRepository()
-    private val monthlyBillRepository = MonthlyBillRepository()
 
     private val _orders = MutableStateFlow<List<Order>>(emptyList())
     val orders: StateFlow<List<Order>> = _orders
@@ -26,37 +21,21 @@ class OrderViewModel : ViewModel() {
     private val _pastOrders = MutableStateFlow<List<Order>>(emptyList())
     val pastOrders: StateFlow<List<Order>> = _pastOrders
 
+    private val _currentOrder = MutableStateFlow<Order?>(null)
+    val currentOrder: StateFlow<Order?> = _currentOrder
+
     @RequiresApi(Build.VERSION_CODES.O)
-    fun addOrder(order: Order, userId: String, onSuccess: (Order) -> Unit) {
-        orderRepository.addOrder(order) { addedOrder ->
-            updateOrCreateMonthlyBill(addedOrder, userId)
-            onSuccess(addedOrder)
-        }
-    }
-    @RequiresApi(Build.VERSION_CODES.O)
-    fun updateOrCreateMonthlyBill(order: Order, userId: String) {
-        val month = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM"))
-        viewModelScope.launch(Dispatchers.IO) {
-            monthlyBillRepository.getMonthlyBillByMonth(userId, month) { existingBill ->
-                if (existingBill != null) {
-                    existingBill.amount += order.totalAmount
-                    existingBill.orders += order
-                    monthlyBillRepository.updateMonthlyBill(existingBill)
-                } else {
-                    val newBill = MonthlyBill(
-                        userId = userId,
-                        month = month,
-                        amount = order.totalAmount,
-                        orders = listOf(order),
-                        billId = ""  // Initially empty, set upon creation in repository
-                    )
-                    monthlyBillRepository.addMonthlyBill(newBill) { isSuccess ->
-                        // Handle success or failure
-                    }
-                }
+    fun addOrder(order: Order, userId: String, onSuccess: (Boolean, String?) -> Unit, onFailure: () -> Unit) {
+        orderRepository.addOrder(order) { success, orderId ->
+            if (success && orderId != null) {
+                onSuccess(true, orderId)  // Pass the order ID on success
+            } else {
+                onFailure()
             }
         }
     }
+    @RequiresApi(Build.VERSION_CODES.O)
+
 
     fun loadAllOrders() {
         viewModelScope.launch(Dispatchers.IO) {
@@ -67,14 +46,16 @@ class OrderViewModel : ViewModel() {
         }
     }
 
-        fun loadOrders(userId: String) {
-            viewModelScope.launch(Dispatchers.IO) {
-                orderRepository.getOrders(userId) { orders ->
-                    _orders.value = orders
-                    Log.d("OrderViewModel", "Orders loaded: $orders")
-                }
+    fun loadOrders(userId: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            orderRepository.getOrders(userId) { orders ->
+                // Filter out orders with status "Ready for Pickup" and "Rejected"
+                val activeOrders = orders.filter { it.status !in listOf("Rejected" ,"Completed") }
+                _orders.value = activeOrders
+                Log.d("OrderViewModel", "Active orders loaded: $activeOrders")
             }
         }
+    }
 
     fun loadPastOrders(userId: String) {
         viewModelScope.launch(Dispatchers.IO) {
@@ -114,6 +95,15 @@ class OrderViewModel : ViewModel() {
         }
     }
 
+    fun loadOrderById(orderId: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            orderRepository.getOrderById(orderId) { order ->
+                _currentOrder.value = order
+            }
+        }
+    }
+
+
         fun deleteOrder(orderId: String, userId: String) {
             viewModelScope.launch(Dispatchers.IO) {
                 orderRepository.deleteOrder(orderId)
@@ -121,3 +111,4 @@ class OrderViewModel : ViewModel() {
             }
         }
     }
+

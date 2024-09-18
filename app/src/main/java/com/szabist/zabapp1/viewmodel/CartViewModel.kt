@@ -45,4 +45,7 @@ class CartViewModel : ViewModel() {
     fun isItemInCart(itemId: String): Boolean {
         return _cartItems.value.any { it.menuItem.id == itemId }
     }
+    fun clearCart() {
+        _cartItems.value = emptyList()  // Clear all items in the cart
+    }
 }

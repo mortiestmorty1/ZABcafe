@@ -5,8 +5,12 @@ data class MonthlyBill(
     val userId: String = "",
     val month: String = "",
     var amount: Double = 0.0,
-    val paid: Boolean = false,
-    var flaggedAsPaid: Boolean = false,
+    var paid: Boolean = false,
+    var partialPaid: Boolean = false,
+    var partialPaymentAmount: Double = 0.0,
+    var arrears: Double = 0.0, // Remaining amount that will be carried over to next month
+    var adminApproved: Boolean = false,
     var orders: List<Order> = listOf(),
-    val userIdMonth: String = userId + "_" + month  // Ensure this is set whenever a bill is created or updated.
+    var ordersMade: Boolean = orders.isNotEmpty(),
+    var userIdMonth: String = "${userId}_$month"
 )
