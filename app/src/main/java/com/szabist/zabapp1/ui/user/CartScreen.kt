@@ -48,7 +48,7 @@ fun CartScreen(navController: NavController, cartViewModel: CartViewModel = view
                 }
             }
             val subtotal = cartItems.sumOf { it.quantity * it.menuItem.price }
-            Text("Subtotal: $$subtotal", style = MaterialTheme.typography.titleSmall)
+            Text("Subtotal: PKR$subtotal", style = MaterialTheme.typography.titleSmall)
             Button(
                 onClick = {
                     navController.navigate("checkout")

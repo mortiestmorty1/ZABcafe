@@ -26,7 +26,6 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.google.firebase.auth.FirebaseAuth
 import com.szabist.zabapp1.data.model.User
 import com.szabist.zabapp1.viewmodel.UserViewModel
 import kotlinx.coroutines.Dispatchers
@@ -40,10 +39,9 @@ fun AddUserScreen(navController: NavController, userViewModel: UserViewModel = v
     var username by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-    var role by remember { mutableStateOf("user") }
+    var role by remember { mutableStateOf("hosteler") }
     var contactNumber by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(false) }
-    val auth = FirebaseAuth.getInstance()
 
     Column(
         modifier = Modifier
@@ -80,7 +78,8 @@ fun AddUserScreen(navController: NavController, userViewModel: UserViewModel = v
             label = { Text("Contact Number") },
             modifier = Modifier.fillMaxWidth()
         )
-        Spacer(modifier = Modifier.height(8.dp))
+
+        Spacer(modifier = Modifier.height(16.dp))
 
         Text("Role")
         Row(
@@ -88,10 +87,15 @@ fun AddUserScreen(navController: NavController, userViewModel: UserViewModel = v
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
             RadioButton(
-                selected = role == "user",
-                onClick = { role = "user" }
+                selected = role == "teacher",
+                onClick = { role = "teacher" }
             )
-            Text("User")
+            Text("Teacher")
+            RadioButton(
+                selected = role == "hosteler",
+                onClick = { role = "hosteler" }
+            )
+            Text("Hosteler")
             RadioButton(
                 selected = role == "admin",
                 onClick = { role = "admin" }
@@ -100,36 +104,32 @@ fun AddUserScreen(navController: NavController, userViewModel: UserViewModel = v
         }
 
         Spacer(modifier = Modifier.height(16.dp))
+
         Button(
             onClick = {
-                isLoading = true
-                auth.createUserWithEmailAndPassword(email, password)
-                    .addOnCompleteListener { task ->
-                        if (task.isSuccessful) {
-                            val userId = auth.currentUser?.uid ?: ""
-                            val user = User(
-                                id = userId,
-                                username = username,
-                                email = email,
-                                role = role,
-                                contactNumber = contactNumber
-                            )
-                            coroutineScope.launch {
-                                userViewModel.addUser(user) {
-                                    isLoading = false
-                                    coroutineScope.launch(Dispatchers.Main) {
-                                        Toast.makeText(context, "User added successfully", Toast.LENGTH_SHORT).show()
-                                        navController.popBackStack()
-                                    }
-                                }
-                            }
-                        } else {
-                            isLoading = false
-                            coroutineScope.launch(Dispatchers.Main) {
-                                Toast.makeText(context, "Failed to add user", Toast.LENGTH_SHORT).show()
+                if (password.length < 6) {
+                    Toast.makeText(context, "Password should be at least 6 characters", Toast.LENGTH_SHORT).show()
+                } else {
+                    isLoading = true
+                    val user = User(
+                        id = "",
+                        username = username,
+                        email = email,
+                        role = role,
+                        contactNumber = contactNumber
+                    )
+                    userViewModel.addUserWithAuth(user, password) { success, errorMessage ->
+                        isLoading = false
+                        coroutineScope.launch(Dispatchers.Main) {
+                            if (success) {
+                                Toast.makeText(context, "User added successfully", Toast.LENGTH_SHORT).show()
+                                navController.popBackStack()
+                            } else {
+                                Toast.makeText(context, errorMessage ?: "Failed to add user", Toast.LENGTH_SHORT).show()
                             }
                         }
                     }
+                }
             },
             enabled = !isLoading,
             modifier = Modifier.fillMaxWidth()
@@ -138,3 +138,4 @@ fun AddUserScreen(navController: NavController, userViewModel: UserViewModel = v
         }
     }
 }
+

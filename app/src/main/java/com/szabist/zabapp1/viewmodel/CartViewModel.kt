@@ -11,13 +11,17 @@ class CartViewModel : ViewModel() {
     private val _cartItems = MutableStateFlow<List<CartItem>>(emptyList())
     val cartItems: StateFlow<List<CartItem>> = _cartItems
 
-    fun addToCart(menuItem: MenuItem) {
+    fun addToCart(menuItem: MenuItem, quantity: Int) {
         _cartItems.update { currentItems ->
             val existingItem = currentItems.find { it.menuItem.id == menuItem.id }
             if (existingItem != null) {
-                currentItems.map { if (it.menuItem.id == menuItem.id) it.copy(quantity = it.quantity + 1) else it }
+                // If item already exists, update its quantity by adding the specified quantity
+                currentItems.map {
+                    if (it.menuItem.id == menuItem.id) it.copy(quantity = it.quantity + quantity) else it
+                }
             } else {
-                currentItems + CartItem(menuItem, 1)
+                // Add the new item with the specified quantity
+                currentItems + CartItem(menuItem, quantity)
             }
         }
     }

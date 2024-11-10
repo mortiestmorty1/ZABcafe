@@ -6,6 +6,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -14,7 +15,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -46,6 +46,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -54,6 +55,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.szabist.zabapp1.MainActivity
+import com.szabist.zabapp1.R
 import com.szabist.zabapp1.data.model.User
 import com.szabist.zabapp1.viewmodel.CartViewModel
 import com.szabist.zabapp1.viewmodel.UserViewModel
@@ -85,37 +87,48 @@ fun UserDashboard(userId: String, userViewModel: UserViewModel = viewModel(), ca
     Scaffold(
         topBar = {
             TopAppBar(
-                title = {}, // Empty here to manually place it later
+                title = {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Spacer to push the logo to the center
+                        Spacer(modifier = Modifier.weight(1f))
+
+                        // Logo in the center
+                        Image(
+                            painter = painterResource(id = R.drawable.logo),
+                            contentDescription = "App Logo",
+                            modifier = Modifier.size(80.dp)
+                        )
+
+                        // Spacer to balance the logo in the center
+                        Spacer(modifier = Modifier.weight(1f))
+                    }
+                },
                 navigationIcon = {
-                    // Account button at the top-left corner
                     IconButton(onClick = { accountSectionVisible = !accountSectionVisible }) {
                         Icon(Icons.Filled.AccountBox, contentDescription = "Account")
                     }
                 },
                 actions = {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Spacer(Modifier.weight(1f))
-                        IconButton(onClick = { navController.navigate("cart") }) {
-                            Icon(Icons.Filled.ShoppingCart, contentDescription = "Cart")
-                            val cartItems by cartViewModel.cartItems.collectAsState()
-                            if (cartItems.isNotEmpty()) {
-                                Box(
-                                    modifier = Modifier
-                                        .align(Alignment.Top)
-                                        .offset(x = (-10).dp, y = 8.dp)
-                                        .size(20.dp)
-                                        .background(Color.Red, shape = CircleShape),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = cartItems.size.toString(),
-                                        color = Color.White,
-                                        style = MaterialTheme.typography.bodySmall
-                                    )
-                                }
+                    IconButton(onClick = { navController.navigate("cart") }) {
+                        Icon(Icons.Filled.ShoppingCart, contentDescription = "Cart")
+                        val cartItems by cartViewModel.cartItems.collectAsState()
+                        if (cartItems.isNotEmpty()) {
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.Top)
+                                    .size(20.dp)
+                                    .background(Color.Red, shape = CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = cartItems.size.toString(),
+                                    color = Color.White,
+                                    style = MaterialTheme.typography.bodySmall
+                                )
                             }
                         }
                     }

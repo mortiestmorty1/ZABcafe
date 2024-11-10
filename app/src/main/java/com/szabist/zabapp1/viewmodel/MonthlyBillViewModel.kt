@@ -1,5 +1,6 @@
 package com.szabist.zabapp1.viewmodel
 import android.os.Build
+import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -12,6 +13,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import java.util.Date
 
 class MonthlyBillViewModel : ViewModel() {
     private val monthlyBillRepository = MonthlyBillRepository()
@@ -22,7 +24,8 @@ class MonthlyBillViewModel : ViewModel() {
 
     @RequiresApi(Build.VERSION_CODES.O)
     fun handleOrder(order: Order, userId: String, orderViewModel: OrderViewModel, callback: (Boolean, String?) -> Unit) {
-        orderViewModel.addOrder(order, userId, onSuccess = { success, orderId ->
+        order.timestamp = Date()
+        orderViewModel.addOrder(order, onSuccess = { success, orderId ->
             if (success && orderId != null) {
                 val month = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM"))
                 viewModelScope.launch(Dispatchers.IO) {
@@ -63,13 +66,8 @@ class MonthlyBillViewModel : ViewModel() {
                 bill?.let {
                     it.paid = true
                     it.partialPaid = false
-                    it.adminApproved = false // Admin approval still pending
-
-                    // Update the bill and notify the UI immediately
                     monthlyBillRepository.updateMonthlyBill(it) { success ->
-                        if (success) {
-                            _selectedBill.value = it // Update UI state instantly
-                        }
+                        if (success) _monthlyBills.value = _monthlyBills.value.map { b -> if (b.billId == billId) it else b }
                         callback(success)
                     }
                 }
@@ -84,21 +82,18 @@ class MonthlyBillViewModel : ViewModel() {
             monthlyBillRepository.getBillById(billId) { bill ->
                 bill?.let {
                     it.partialPaid = true
+                    it.paid = true
                     it.partialPaymentAmount = partialPaymentAmount
-                    it.adminApproved = false // Admin approval pending
                     it.arrears = it.amount - partialPaymentAmount
-
-                    // Update the bill and notify the UI immediately
                     monthlyBillRepository.updateMonthlyBill(it) { success ->
-                        if (success) {
-                            _selectedBill.value = it // Update UI state instantly
-                        }
+                        if (success) _monthlyBills.value = _monthlyBills.value.map { b -> if (b.billId == billId) it else b }
                         callback(success)
                     }
                 }
             }
         }
     }
+
 
     fun carryOverArrearsToNextBill(userId: String, arrears: Double, month: String, callback: (Boolean) -> Unit) {
         viewModelScope.launch(Dispatchers.IO) {
@@ -138,36 +133,40 @@ class MonthlyBillViewModel : ViewModel() {
         }
     }
 
+    fun loadAllBills() {
+        viewModelScope.launch(Dispatchers.IO) {
+            monthlyBillRepository.getAllBills { bills ->
+                _monthlyBills.value = bills
+            }
+        }
+    }
+
     private fun addMonthlyBill(bill: MonthlyBill, callback: (Boolean) -> Unit) {
         monthlyBillRepository.addMonthlyBill(bill, callback)
     }
 
-    fun updateMonthlyBill(bill: MonthlyBill, callback: (Boolean) -> Unit) {
+    private fun updateMonthlyBill(bill: MonthlyBill, callback: (Boolean) -> Unit) {
         monthlyBillRepository.updateMonthlyBill(bill) {
             callback(true)
             loadBillsForUser(bill.userId)
         }
     }
-    fun approveBillAsPaid(billId: String, callback: (Boolean) -> Unit) {
-        viewModelScope.launch(Dispatchers.IO) {
-            monthlyBillRepository.getBillById(billId) { bill ->
-                bill?.let {
-                    it.paid = true
-                    it.partialPaid = false  // Ensure no partial payments
-                    it.adminApproved = true
-                    monthlyBillRepository.updateMonthlyBill(it) {
-                        callback(true)
-                    }
-                } ?: callback(false)
-            }
-        }
-    }
+
+
 
     fun flagBillForAdminApproval(bill: MonthlyBill, callback: (Boolean) -> Unit) {
         viewModelScope.launch(Dispatchers.IO) {
             monthlyBillRepository.updateMonthlyBill(bill) {
                 callback(true)
             }
+        }
+    }
+    fun loadBillsForUserAndMonth(userId: String, month: String) {
+        Log.d("MonthlyBillViewModel", "Loading bills for userId: $userId and month: $month")
+
+        monthlyBillRepository.getMonthlyBillsForUserAndMonth(userId, month) { bills ->
+            Log.d("MonthlyBillViewModel", "Received bills: $bills")
+            _monthlyBills.value = bills
         }
     }
 }

@@ -2,7 +2,9 @@ package com.szabist.zabapp1.ui.user
 
 
 import android.os.Build
+import android.util.Log
 import androidx.annotation.RequiresApi
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -12,7 +14,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -41,42 +42,63 @@ import com.szabist.zabapp1.viewmodel.UserViewModel
 fun MonthlyBillingScreen(
     navController: NavController,
     userId: String,
-    userViewModel: UserViewModel = viewModel()  // Assuming UserViewModel can provide the user's role
+    userViewModel: UserViewModel = viewModel(),
+    monthlyBillViewModel: MonthlyBillViewModel = viewModel()
 ) {
-    val monthlyBillViewModel: MonthlyBillViewModel = viewModel()
-
-    // Load user details and bills when the component is composed
-    LaunchedEffect(key1 = userId) {
+    LaunchedEffect(userId) {
         userViewModel.fetchUserById(userId)
         monthlyBillViewModel.loadBillsForUser(userId)
     }
 
-    // Collect the necessary states
     val bills by monthlyBillViewModel.monthlyBills.collectAsState()
     val currentUserRole by userViewModel.currentUserRole.collectAsState(initial = "")
+
+    Log.d("MonthlyBillingScreen", "Current user role: $currentUserRole") // Log role
 
     Scaffold(
         topBar = { TopAppBar(title = { Text("Monthly Bills") }) }
     ) { padding ->
-        if (currentUserRole in listOf("teacher", "hostilities")) {
-            // User has access
-            LazyColumn(modifier = Modifier.padding(padding)) {
-                if (bills.isEmpty()) {
-                    item { Text("No bills available.", modifier = Modifier.padding(16.dp)) }
-                } else {
-                    items(bills.sortedByDescending { it.month }) { bill ->
-                        BillItem(bill) { billId ->
-                            navController.navigate("bill_details/$billId")
-                        }
-                    }
+        when {
+            currentUserRole?.isEmpty() ?: true -> {
+                // Loading state if role is not yet populated
+                Column(
+                    modifier = Modifier
+                        .padding(padding)
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text("Loading...", style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
                 }
             }
-        } else {
-            // User does not have access
-            Column(modifier = Modifier.padding(padding).fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("You do not have access to view this page.", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.error)
-                Button(onClick = { navController.popBackStack() }) {
-                    Text("Go Back")
+            currentUserRole == "student" -> {
+                // Show restricted access message for students
+                Column(
+                    modifier = Modifier
+                        .padding(padding)
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
+                    Text(
+                        "Access Restricted",
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = Color.Gray
+                    )
+                    Text("Monthly billing details are only available to teachers and hostelers.")
+                }
+            }
+            else -> {
+                // Display bills for authorized roles
+                LazyColumn(modifier = Modifier.padding(padding)) {
+                    if (bills.isEmpty()) {
+                        item { Text("No bills available.", modifier = Modifier.padding(16.dp)) }
+                    } else {
+                        items(bills.sortedByDescending { it.month }) { bill ->
+                            BillItem(bill) { billId ->
+                                navController.navigate("bill_details/$billId")
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -84,14 +106,13 @@ fun MonthlyBillingScreen(
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
-@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun BillItem(bill: MonthlyBill, navigateToDetails: (String) -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(8.dp),
-        onClick = { navigateToDetails(bill.billId) }
+            .padding(8.dp)
+            .clickable { navigateToDetails(bill.billId) }
     ) {
         Row(
             modifier = Modifier.padding(16.dp),
@@ -99,9 +120,10 @@ fun BillItem(bill: MonthlyBill, navigateToDetails: (String) -> Unit) {
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text("Month: ${bill.month}")
-                Text("Total: $${bill.amount}", style = MaterialTheme.typography.bodyLarge)
+                Text("Total: PKR ${bill.amount}", style = MaterialTheme.typography.bodyLarge)
+                Text("Paid: ${if (bill.paid) "Yes" else "No"}", style = MaterialTheme.typography.bodyMedium)
+                Text("Arrears: PKR ${bill.arrears}", style = MaterialTheme.typography.bodyMedium)
             }
-
             Icon(
                 imageVector = if (bill.paid) Icons.Filled.CheckCircle else Icons.Filled.Warning,
                 contentDescription = if (bill.paid) "Paid" else "Unpaid",
@@ -110,3 +132,5 @@ fun BillItem(bill: MonthlyBill, navigateToDetails: (String) -> Unit) {
         }
     }
 }
+
+

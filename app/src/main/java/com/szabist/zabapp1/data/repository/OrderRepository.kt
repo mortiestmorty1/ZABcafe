@@ -1,23 +1,30 @@
 package com.szabist.zabapp1.data.repository
 
 import android.util.Log
-import com.google.firebase.Firebase
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.DatabaseReference
-import com.google.firebase.database.ValueEventListener
-import com.google.firebase.database.database
 import com.szabist.zabapp1.data.firebase.FirebaseService
 import com.szabist.zabapp1.data.model.Order
+import com.szabist.zabapp1.data.model.User
+import kotlinx.coroutines.tasks.await
+import java.util.Date
 
 class OrderRepository {
     private val ordersRef: DatabaseReference = FirebaseService.getDatabaseReference("orders")
+    private val usersRef: DatabaseReference = FirebaseService.getDatabaseReference("users")
 
-
-    fun addOrder(order: Order, onSuccess: (Boolean, String?) -> Unit) {
+    private suspend fun fetchUserName(userId: String): String {
+        val snapshot = usersRef.child(userId).get().await()
+        val user = snapshot.getValue(User::class.java)
+        return user?.username ?: "Unknown"
+    }
+    suspend fun addOrder(order: Order, onSuccess: (Boolean, String?) -> Unit) {
         val key = ordersRef.push().key
         if (key != null) {
-            order.id = key  // Set the order ID
+            // Fetch the user's name
+            val userName = fetchUserName(order.userId)
+            order.id = key
+            order.userName = userName  // Set the user name in the order
+            order.timestamp = Date()
             ordersRef.child(key).setValue(order).addOnSuccessListener {
                 Log.d("OrderRepository", "Order successfully added with ID: $key")
                 onSuccess(true, key)  // Pass the order ID on success
@@ -59,25 +66,19 @@ class OrderRepository {
         }
     }
     fun getAllOrders(callback: (List<Order>) -> Unit) {
-        val ordersRef = Firebase.database.reference.child("orders")
-
-        ordersRef.addValueEventListener(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                val ordersList = mutableListOf<Order>()
-                for (orderSnapshot in snapshot.children) {
-                    val order = orderSnapshot.getValue(Order::class.java)
-                    if (order != null) {
-                        ordersList.add(order)
-                    }
+        ordersRef.get().addOnSuccessListener { snapshot ->
+            val ordersList = mutableListOf<Order>()
+            snapshot.children.forEach { orderSnapshot ->
+                val order = orderSnapshot.getValue(Order::class.java)
+                if (order != null) {
+                    ordersList.add(order)
                 }
-                callback(ordersList)
             }
-
-            override fun onCancelled(error: DatabaseError) {
-                Log.e("OrderRepository", "Error fetching orders: ${error.message}")
-                callback(emptyList())
-            }
-        })
+            callback(ordersList)
+        }.addOnFailureListener {
+            Log.e("OrderRepository", "Error fetching orders: ${it.message}")
+            callback(emptyList())
+        }
     }
 
 

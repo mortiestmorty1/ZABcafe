@@ -11,6 +11,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import java.util.Date
 
 class OrderViewModel : ViewModel() {
     private val orderRepository = OrderRepository()
@@ -25,12 +26,16 @@ class OrderViewModel : ViewModel() {
     val currentOrder: StateFlow<Order?> = _currentOrder
 
     @RequiresApi(Build.VERSION_CODES.O)
-    fun addOrder(order: Order, userId: String, onSuccess: (Boolean, String?) -> Unit, onFailure: () -> Unit) {
-        orderRepository.addOrder(order) { success, orderId ->
-            if (success && orderId != null) {
-                onSuccess(true, orderId)  // Pass the order ID on success
-            } else {
-                onFailure()
+    fun addOrder(order: Order, onSuccess: (Boolean, String?) -> Unit, onFailure: () -> Unit) {
+        viewModelScope.launch(Dispatchers.IO) {
+            order.timestamp = Date()
+            orderRepository.addOrder(order) { success, orderId ->
+                if (success && orderId != null) {
+                    loadAllOrders()  // Refresh orders after adding
+                    onSuccess(true, orderId)
+                } else {
+                    onFailure()
+                }
             }
         }
     }

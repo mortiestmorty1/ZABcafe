@@ -1,9 +1,13 @@
 package com.szabist.zabapp1.ui.user
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
@@ -25,6 +29,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import coil.compose.rememberImagePainter
 import com.szabist.zabapp1.data.model.MenuItem
 import com.szabist.zabapp1.viewmodel.CartViewModel
 import com.szabist.zabapp1.viewmodel.MenuViewModel
@@ -44,6 +49,7 @@ fun MenuItemDetailsScreen(
     }
 
     var isInCart by remember { mutableStateOf(false) }
+    var quantity by remember { mutableStateOf(1) } // State for tracking quantity
 
     LaunchedEffect(menuItemId, cartViewModel.cartItems.collectAsState().value) {
         isInCart = cartViewModel.isItemInCart(menuItemId)
@@ -59,10 +65,13 @@ fun MenuItemDetailsScreen(
         menuItemState.value?.let { menuItem ->
             MenuItemCard(
                 menuItem = menuItem,
+                menuViewModel = menuViewModel,
                 isInCart = isInCart,
+                quantity = quantity, // Pass quantity to the card
+                onQuantityChange = { newQuantity -> quantity = newQuantity }, // Handle quantity change
                 onAddToCartClicked = {
                     if (!isInCart) {
-                        cartViewModel.addToCart(menuItem)
+                        cartViewModel.addToCart(menuItem, quantity) // Pass quantity to the ViewModel
                         isInCart = true
                     }
                 },
@@ -77,10 +86,14 @@ fun MenuItemDetailsScreen(
 @Composable
 fun MenuItemCard(
     menuItem: MenuItem,
+    menuViewModel: MenuViewModel,
     isInCart: Boolean,
+    quantity: Int, // Quantity parameter
+    onQuantityChange: (Int) -> Unit, // Callback for quantity change
     onAddToCartClicked: () -> Unit,
     onGoToCartClicked: () -> Unit
 ) {
+    val categoryName = menuViewModel.getCategoryNameById(menuItem.categoryId) // Get the category name
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -88,10 +101,37 @@ fun MenuItemCard(
         elevation = CardDefaults.cardElevation(8.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
+            if (menuItem.imageUrl != null) {
+                Image(
+                    painter = rememberImagePainter(menuItem.imageUrl),
+                    contentDescription = menuItem.name,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(200.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                )
+            }
+            Spacer(modifier = Modifier.height(8.dp))
             Text(menuItem.name, style = MaterialTheme.typography.titleLarge)
             Text("Description: ${menuItem.description}", style = MaterialTheme.typography.bodyMedium)
+            Text("Category: $categoryName", style = MaterialTheme.typography.bodyMedium)
             Text("Price: $${menuItem.price}", style = MaterialTheme.typography.bodyMedium)
             Text("Status: ${if (menuItem.available) "Available" else "Not Available"}", style = MaterialTheme.typography.bodyMedium)
+
+            // Quantity selector
+            Row(
+                modifier = Modifier.padding(vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Button(onClick = { if (quantity > 1) onQuantityChange(quantity - 1) }) {
+                    Text("-")
+                }
+                Text(quantity.toString(), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(horizontal = 16.dp))
+                Button(onClick = { onQuantityChange(quantity + 1) }) {
+                    Text("+")
+                }
+            }
+
             Button(
                 onClick = {
                     if (!isInCart) {

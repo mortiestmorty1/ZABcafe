@@ -1,5 +1,5 @@
-package com.szabist.zabapp1.ui.user
-
+// BillDetailsScreen.kt
+package com.szabist.zabapp1.ui.admin
 
 import android.os.Build
 import androidx.annotation.RequiresApi
@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -30,9 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.szabist.zabapp1.data.model.Order
-import com.szabist.zabapp1.viewmodel.MenuViewModel
 import com.szabist.zabapp1.viewmodel.MonthlyBillViewModel
-
 
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
@@ -40,13 +39,14 @@ import com.szabist.zabapp1.viewmodel.MonthlyBillViewModel
 fun BillDetailsScreen(
     navController: NavController,
     billId: String,
-    viewModel: MonthlyBillViewModel
+    viewModel: MonthlyBillViewModel = viewModel()
 ) {
+    val bill by viewModel.selectedBill.collectAsState()
+    var showPaymentDialog by remember { mutableStateOf(false) }
+
     LaunchedEffect(billId) {
         viewModel.getBillById(billId)
     }
-
-    val bill by viewModel.selectedBill.collectAsState()
 
     bill?.let { bill ->
         Scaffold(
@@ -66,8 +66,8 @@ fun BillDetailsScreen(
                 Text("User ID: ${bill.userId}", style = MaterialTheme.typography.bodyMedium)
                 Text("Month: ${bill.month}", style = MaterialTheme.typography.bodyMedium)
                 Text("Total Amount: $${bill.amount}", style = MaterialTheme.typography.titleLarge)
-                Text("Paid: ${bill.paid}", style = MaterialTheme.typography.bodyMedium)
-                Text("Partially Paid: ${bill.partialPaid}", style = MaterialTheme.typography.bodyMedium)
+                Text("Paid: ${if (bill.paid) "Yes" else "No"}", style = MaterialTheme.typography.bodyMedium)
+                Text("Partially Paid: ${if (bill.partialPaid) "Yes" else "No"}", style = MaterialTheme.typography.bodyMedium)
                 Text("Partial Payment Amount: $${bill.partialPaymentAmount}", style = MaterialTheme.typography.bodyMedium)
                 Text("Arrears: $${bill.arrears}", style = MaterialTheme.typography.bodyMedium)
                 Spacer(Modifier.height(16.dp))
@@ -82,7 +82,7 @@ fun BillDetailsScreen(
 
                 Spacer(Modifier.height(16.dp))
 
-                // Show payment status
+                // Display payment status with color coding
                 when {
                     bill.paid && bill.partialPaid -> {
                         Text("Status: Partially Paid", color = Color.Gray)
@@ -94,21 +94,52 @@ fun BillDetailsScreen(
                         Text("Status: Unpaid", color = Color.Red)
                     }
                 }
+
+                // Show payment button only if the bill is unpaid
+                if (!bill.paid) {
+                    Button(onClick = { showPaymentDialog = true }) {
+                        Text("Mark as Paid / Partially Paid")
+                    }
+                }
             }
         }
-    } ?: Text("Bill not found", style = MaterialTheme.typography.bodyLarge)
+
+        if (showPaymentDialog) {
+            PaymentDialog(
+                totalAmount = bill.amount,
+                arrears = bill.arrears,
+                onConfirmFullPayment = {
+                    viewModel.handleFullPayment(billId) { success ->
+                        if (success) {
+                            println("Bill marked as fully paid.")
+                            showPaymentDialog = false
+                            viewModel.getBillById(billId) // Refresh to update UI
+                        }
+                    }
+                },
+                onConfirmPartialPayment = { partialPaymentAmount ->
+                    viewModel.handlePartialPayment(billId, partialPaymentAmount) { success ->
+                        if (success) {
+                            println("Bill marked as partially paid.")
+                            showPaymentDialog = false
+                            viewModel.getBillById(billId) // Refresh to update UI
+                        }
+                    }
+                },
+                onDismiss = { showPaymentDialog = false }
+            )
+        }
+    } ?: Text("Loading bill details...", style = MaterialTheme.typography.bodyMedium)
 }
 
 @Composable
-fun ExpandableOrderItem(order: Order, menuViewModel: MenuViewModel = viewModel()) {
+fun ExpandableOrderItem(order: Order) {
     var expanded by remember { mutableStateOf(false) }
     Column(modifier = Modifier.clickable { expanded = !expanded }) {
         Text("Order ID: ${order.id} - Total: $${order.totalAmount}", style = MaterialTheme.typography.bodyMedium)
-        Text("Order Date: ${order.timestamp}", style = MaterialTheme.typography.bodyMedium)
         if (expanded) {
             order.items.forEach { menuItem ->
-                val categoryName = menuViewModel.getCategoryNameById(menuItem.categoryId) // Fetch category name
-                Text("Item: ${menuItem.name} - Category: $categoryName - Price: $${menuItem.price}", style = MaterialTheme.typography.bodySmall)
+                Text("Item: ${menuItem.name} - Price: $${menuItem.price}", style = MaterialTheme.typography.bodySmall)
             }
         }
     }

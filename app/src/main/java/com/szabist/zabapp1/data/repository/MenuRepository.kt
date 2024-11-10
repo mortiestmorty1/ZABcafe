@@ -9,6 +9,7 @@ class MenuRepository {
     private val database: DatabaseReference = FirebaseDatabase.getInstance().getReference()
     private val menuRef: DatabaseReference = database.child("menu_items")
 
+
     suspend fun addMenuItem(menuItem: MenuItem) {
         val key = menuRef.push().key ?: return
         menuItem.id = key

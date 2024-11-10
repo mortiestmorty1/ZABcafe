@@ -22,7 +22,6 @@ class UserViewModel : ViewModel() {
     private val _logoutEvent = MutableStateFlow<Boolean?>(null)
     val logoutEvent: StateFlow<Boolean?> = _logoutEvent.asStateFlow()
 
-
     init {
         fetchUsers()
     }
@@ -32,7 +31,7 @@ class UserViewModel : ViewModel() {
             try {
                 val users = userRepository.getUsers()
                 _users.value = users
-                Log.d("UserViewModel", "Fetched users: $users")
+                Log.d("UserViewModel", "Updated user list in ViewModel: $users")
             } catch (e: Exception) {
                 Log.e("UserViewModel", "Error fetching users", e)
             }
@@ -46,6 +45,18 @@ class UserViewModel : ViewModel() {
             onComplete()
         }
     }
+
+    fun addUserWithAuth(user: User, password: String, onComplete: (Boolean, String?) -> Unit) {
+        viewModelScope.launch(Dispatchers.IO) {
+            userRepository.addUserWithAuth(user, password) { success, errorMessage ->
+                if (success) {
+                    fetchUsers() // Refresh users list after adding
+                }
+                onComplete(success, errorMessage)
+            }
+        }
+    }
+
 
     fun updateUser(user: User) {
         viewModelScope.launch(Dispatchers.IO) {
@@ -70,26 +81,31 @@ class UserViewModel : ViewModel() {
     }
 
     fun fetchUserById(userId: String) {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch {
             try {
                 val user = userRepository.getUserById(userId)
-                _currentUserRole.value = user?.role
+                _currentUser.value = user
+                _currentUserRole.value = user?.role // Explicitly set currentUserRole
                 Log.d("UserViewModel", "Fetched user: $user with role: ${user?.role}")
             } catch (e: Exception) {
-                Log.e("UserViewModel", "Error fetching user by ID: $userId", e)
-                _currentUserRole.value = null // Ensure the role is set to null in case of error
+                Log.e("UserViewModel", "Error fetching user", e)
             }
         }
     }
+
+
     fun fetchUserDetails(userId: String) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val user = userRepository.getUserById(userId)
-                _currentUser.value = user // Assuming _currentUser is MutableStateFlow<User?>
+                _currentUser.value = user
             } catch (e: Exception) {
                 Log.e("UserViewModel", "Error fetching user details", e)
             }
         }
+    }
+    fun clearUser() {
+        _currentUser.value = null
     }
 }
 

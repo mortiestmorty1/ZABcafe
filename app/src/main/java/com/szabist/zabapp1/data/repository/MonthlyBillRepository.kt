@@ -24,12 +24,14 @@ class MonthlyBillRepository {
     fun getAllBills(callback: (List<MonthlyBill>) -> Unit) {
         billsRef.get().addOnSuccessListener { snapshot ->
             val bills = snapshot.children.mapNotNull { it.getValue(MonthlyBill::class.java) }
+            Log.d("Repository", "Fetched all bills: $bills")
             callback(bills)
         }.addOnFailureListener {
-            Log.e("MonthlyBillRepository", "Failed to fetch all bills", it)
+            Log.e("Repository", "Failed to fetch all bills", it)
             callback(emptyList())
         }
     }
+
 
     // Retrieve bills for a specific user
     fun getBillsForUser(userId: String, callback: (List<MonthlyBill>) -> Unit) {
@@ -61,6 +63,7 @@ class MonthlyBillRepository {
     // Update bill for partial payment
     fun updateMonthlyBillWithPartialPayment(bill: MonthlyBill, partialPayment: Double, callback: (Boolean) -> Unit) {
         bill.partialPaid = true
+        bill.paid = true // Marking as paid but partialPaid will indicate it's only partially
         bill.partialPaymentAmount = partialPayment
         bill.arrears = bill.amount - partialPayment // Calculate the remaining amount
         billsRef.child(bill.billId).setValue(bill).addOnSuccessListener {
@@ -91,26 +94,30 @@ class MonthlyBillRepository {
     // Fetch a bill by userId and month
     fun getMonthlyBillByMonth(userId: String, month: String, callback: (MonthlyBill?) -> Unit) {
         val userIdMonth = "${userId.trim()}_${month.trim()}"
+
         billsRef.orderByChild("userIdMonth").equalTo(userIdMonth).limitToFirst(1).get()
             .addOnSuccessListener { snapshot ->
-                if (snapshot.children.any()) {
-                    val bill = snapshot.children.first().getValue(MonthlyBill::class.java)
-                    callback(bill)
-                } else {
-                    Log.d("Repository", "No existing bill found for $userId in $month")
-                    callback(null)
-                }
+                val bill = snapshot.children.firstOrNull()?.getValue(MonthlyBill::class.java)
+                callback(bill)
             }.addOnFailureListener {
                 Log.e("Repository", "Error fetching bill for $userIdMonth", it)
                 callback(null)
             }
     }
-    fun approveMonthlyBill(bill: MonthlyBill, callback: (Boolean) -> Unit) {
-        bill.adminApproved = true
-        billsRef.child(bill.billId).setValue(bill).addOnSuccessListener {
-            callback(true)
-        }.addOnFailureListener {
-            callback(false)
-        }
+    fun getMonthlyBillsForUserAndMonth(userId: String, yearMonth: String, callback: (List<MonthlyBill>) -> Unit) {
+        val userIdMonth = "${userId.trim()}_${yearMonth.trim()}"  // Ensure format is "userId_YYYY-MM"
+
+        Log.d("MonthlyBillRepository", "Querying for userIdMonth: $userIdMonth")
+
+        billsRef.orderByChild("userIdMonth").equalTo(userIdMonth).get()
+            .addOnSuccessListener { snapshot ->
+                val bills = snapshot.children.mapNotNull { it.getValue(MonthlyBill::class.java) }
+                Log.d("MonthlyBillRepository", "Fetched bills for userIdMonth $userIdMonth: $bills")
+                callback(bills)
+            }
+            .addOnFailureListener { exception ->
+                Log.e("MonthlyBillRepository", "Failed to fetch bills for $userIdMonth", exception)
+                callback(emptyList())
+            }
     }
 }

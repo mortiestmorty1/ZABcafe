@@ -1,5 +1,6 @@
 package com.szabist.zabapp1.ui.user
 
+import android.app.Activity
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -21,21 +22,29 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import com.szabist.zabapp1.data.model.Order
 import com.szabist.zabapp1.viewmodel.OrderViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun OrderDetailsScreen(navController: NavController, orderId: String, orderViewModel: OrderViewModel = viewModel()) {
-    // Trigger loading the order when OrderDetailsScreen is composed or the orderId changes.
+fun OrderDetailsScreen(
+    navController: NavController,
+    orderId: String,
+    orderViewModel: OrderViewModel = viewModel()
+) {
+    val activity = LocalContext.current as? Activity
+
+    // Load order when the screen is first opened or when orderId changes.
     LaunchedEffect(orderId) {
         orderViewModel.loadOrderById(orderId)
     }
 
-    // Collect the current order as state.
+    // Collect the current order as state
     val order by orderViewModel.currentOrder.collectAsState()
 
     Scaffold(
@@ -43,7 +52,16 @@ fun OrderDetailsScreen(navController: NavController, orderId: String, orderViewM
             TopAppBar(
                 title = { Text("Order Details") },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = {
+                        // Navigate back to OrderStatusScreen
+                        navController.navigate("order_status") {
+                            popUpTo(navController.graph.findStartDestination().id) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    }) {
                         Icon(
                             imageVector = Icons.Filled.ArrowBack,
                             contentDescription = "Back"
@@ -54,29 +72,41 @@ fun OrderDetailsScreen(navController: NavController, orderId: String, orderViewM
         },
         content = { padding ->
             order?.let {
-                OrderDetailsContent(order = it, navController = navController)
+                OrderDetailsContent(order = it)
             } ?: run {
-                Text("Order not found", modifier = Modifier.padding(padding).padding(16.dp))
+                Text(
+                    "Order not found",
+                    modifier = Modifier
+                        .padding(padding)
+                        .padding(16.dp)
+                )
             }
         }
     )
 }
 
 @Composable
-fun OrderDetailsContent(order: Order, navController: NavController) {
-    Column(modifier = Modifier
-        .padding(52.dp)
-        .fillMaxWidth()
-        .verticalScroll(rememberScrollState())) { // Ensures the content is scrollable if overflow occurs
+fun OrderDetailsContent(order: Order) {
+    Column(
+        modifier = Modifier
+            .padding(16.dp)
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
+    ) {
         Spacer(Modifier.height(16.dp))
         Text(
             "Order ID: ${order.id}",
             style = MaterialTheme.typography.headlineMedium,
         )
         Spacer(Modifier.height(8.dp))
-
         Text(
-            "Total Amount: ${order.totalAmount}",
+            "Order Date: ${order.timestamp}",  // Display the timestamp
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(Modifier.height(8.dp))
+        Text(
+            "Total Amount: PKR ${order.totalAmount}",
             style = MaterialTheme.typography.bodyLarge,
             modifier = Modifier.fillMaxWidth()
         )
@@ -91,7 +121,7 @@ fun OrderDetailsContent(order: Order, navController: NavController) {
 
         order.items.forEach { item ->
             Text(
-                "Item: ${item.name} - ${item.price}",
+                "Item: ${item.name} - PKR ${item.price}",
                 style = MaterialTheme.typography.bodyLarge,
                 modifier = Modifier.fillMaxWidth()
             )
