@@ -32,6 +32,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -85,6 +86,7 @@ fun ViewOrdersScreen(navController: NavController, orderViewModel: OrderViewMode
                     onBack = { selectedCategory = null },
                     onStatusChange = { orderId, newStatus ->
                         orderViewModel.updateOrderStatus(orderId, newStatus)
+                        orderViewModel.loadAllOrders()
                     }
                 )
             }
@@ -153,6 +155,12 @@ fun OrderCategoryScreen(
         OrderCategory.CompletedOrders -> completedOrders
     }
 
+    var searchQuery by remember { mutableStateOf("") }
+    val filteredOrders = ordersToShow.filter { order ->
+        order.id.contains(searchQuery, ignoreCase = true) ||
+                order.userName.contains(searchQuery, ignoreCase = true) ||
+                order.status.contains(searchQuery, ignoreCase = true)
+    }
     Scaffold(
         topBar = {
             TopAppBar(
@@ -165,9 +173,20 @@ fun OrderCategoryScreen(
             )
         }
     ) {
-        LazyColumn(modifier = Modifier.padding(it)) {
-            items(ordersToShow, key = { it.id }) { order ->
-                OrderAdminItem(order = order, onStatusChange = onStatusChange)
+        Column(modifier = Modifier.padding(it)) {
+            // Search Bar
+            TextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                label = { Text("Search Orders") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+            )
+            LazyColumn(modifier = Modifier.padding(it)) {
+                items(filteredOrders, key = { it.id }) { order ->
+                    OrderAdminItem(order = order, onStatusChange = onStatusChange)
+                }
             }
         }
     }
@@ -197,19 +216,21 @@ fun OrderAdminItem(order: Order, onStatusChange: (String, String) -> Unit) {
             if (isInitialSelection && order.status == "pending") {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                     OrderStatusButton(
-                        status = "Accept",
+                        displayStatus = "Accept",
+                        backendStatus = "Accepted",
                         icon = Icons.Filled.ThumbUp,
-                        onStatusChange = { status ->
-                            onStatusChange(order.id, status)
+                        onStatusChange = { backendStatus ->
+                            onStatusChange(order.id, backendStatus)
                             isInitialSelection = false
                         },
                         backgroundColor = MaterialTheme.colorScheme.primary
                     )
                     OrderStatusButton(
-                        status = "Reject",
+                        displayStatus = "Reject",
+                        backendStatus = "Rejected",
                         icon = Icons.Filled.Delete,
-                        onStatusChange = { status ->
-                            onStatusChange(order.id, status)
+                        onStatusChange = { backendStatus ->
+                            onStatusChange(order.id, backendStatus)
                             isInitialSelection = false
                         },
                         backgroundColor = MaterialTheme.colorScheme.error
@@ -220,26 +241,30 @@ fun OrderAdminItem(order: Order, onStatusChange: (String, String) -> Unit) {
             if (order.status == "Accepted" || order.status == "Prepare") {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                     OrderStatusButton(
-                        status = "Prepare",
+                        displayStatus = "Prepare",
+                        backendStatus = "Prepare",
                         icon = Icons.Filled.Build,
-                        onStatusChange = { status -> onStatusChange(order.id, status) },
+                        onStatusChange = { backendStatus -> onStatusChange(order.id, backendStatus) },
                         backgroundColor = MaterialTheme.colorScheme.tertiary
                     )
                     OrderStatusButton(
-                        status = "Ready for Pickup",
+                        displayStatus = "Ready for Pickup",
+                        backendStatus = "Ready for Pickup",
                         icon = Icons.Filled.LocationOn,
-                        onStatusChange = { status -> onStatusChange(order.id, status) },
+                        onStatusChange = { backendStatus -> onStatusChange(order.id, backendStatus) },
                         backgroundColor = MaterialTheme.colorScheme.secondary
                     )
                 }
             }
 
+            // Button for "Completed"
             if (order.status == "Ready for Pickup") {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
                     OrderStatusButton(
-                        status = "Completed",
+                        displayStatus = "Completed",
+                        backendStatus = "Completed",
                         icon = Icons.Filled.Done,
-                        onStatusChange = { status -> onStatusChange(order.id, status) },
+                        onStatusChange = { backendStatus -> onStatusChange(order.id, backendStatus) },
                         backgroundColor = MaterialTheme.colorScheme.primary
                     )
                 }
@@ -250,20 +275,21 @@ fun OrderAdminItem(order: Order, onStatusChange: (String, String) -> Unit) {
 
 // Reusable Order Status Button
 @Composable
-fun OrderStatusButton(status: String, icon: ImageVector, onStatusChange: (String) -> Unit, backgroundColor: Color) {
+fun OrderStatusButton(displayStatus: String,
+                      backendStatus: String, icon: ImageVector, onStatusChange: (String) -> Unit, backgroundColor: Color) {
     Button(
-        onClick = { onStatusChange(status) },
+        onClick = { onStatusChange(backendStatus) }, // Pass backendStatus when clicked
         colors = ButtonDefaults.buttonColors(containerColor = backgroundColor),
         modifier = Modifier
             .padding(8.dp)
-            .size(width = 150.dp, height = 50.dp)  // Adjusted width for longer text
+            .size(width = 150.dp, height = 50.dp)
     ) {
         Icon(
             imageVector = icon,
-            contentDescription = status,
+            contentDescription = displayStatus,
             modifier = Modifier.size(24.dp)
         )
         Spacer(modifier = Modifier.width(4.dp)) // Add space between icon and text
-        Text(text = status, style = MaterialTheme.typography.labelLarge)
+        Text(text = displayStatus, style = MaterialTheme.typography.labelLarge)
     }
 }

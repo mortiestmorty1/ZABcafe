@@ -23,6 +23,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -40,9 +41,14 @@ import com.szabist.zabapp1.viewmodel.MenuViewModel
 @Composable
 fun ManageMenuScreen(navController: NavController, menuViewModel: MenuViewModel = viewModel()) {
     val menuItems by menuViewModel.menuItems.collectAsState()
+    var searchQuery by remember { mutableStateOf("") }
 
     LaunchedEffect(Unit) {
         menuViewModel.loadMenuItems()
+    }
+    val filteredMenuItems = menuItems.filter {
+        it.name.contains(searchQuery, ignoreCase = true) ||
+                it.description.contains(searchQuery, ignoreCase = true)
     }
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
@@ -54,9 +60,17 @@ fun ManageMenuScreen(navController: NavController, menuViewModel: MenuViewModel 
         }
 
         Spacer(modifier = Modifier.height(16.dp))
+        TextField(
+            value = searchQuery,
+            onValueChange = { searchQuery = it },
+            label = { Text("Search Menu Items") },
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
 
         LazyColumn {
-            items(menuItems) { menuItem ->
+            items(filteredMenuItems) { menuItem ->
                 MenuItemCard(navController, menuItem, menuViewModel)
             }
         }

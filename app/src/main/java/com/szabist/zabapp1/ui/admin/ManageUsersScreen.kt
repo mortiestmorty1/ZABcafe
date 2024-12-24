@@ -24,6 +24,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -43,12 +44,15 @@ import com.szabist.zabapp1.viewmodel.UserViewModel
 @Composable
 fun ManageUsersScreen(navController: NavController, userViewModel: UserViewModel = viewModel()) {
     val users by userViewModel.users.collectAsState()
-
+    var searchQuery by remember { mutableStateOf("") }
     LaunchedEffect(Unit) {
         Log.d("ManageUsersScreen", "Fetching users on screen load")
         userViewModel.fetchUsers()
     }
-
+    val filteredUsers = users.filter {
+        it.username.contains(searchQuery, ignoreCase = true) ||
+                it.email.contains(searchQuery, ignoreCase = true)
+    }
     Column(modifier = Modifier.padding(16.dp)) {
         Text("Manage Users", style = MaterialTheme.typography.titleLarge)
         Spacer(modifier = Modifier.height(16.dp))
@@ -62,6 +66,14 @@ fun ManageUsersScreen(navController: NavController, userViewModel: UserViewModel
         }
 
         Spacer(modifier = Modifier.height(8.dp))
+        TextField(
+            value = searchQuery,
+            onValueChange = { searchQuery = it },
+            label = { Text("Search Users") },
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
 
         // Ensure LazyColumn is set for scrolling
         LazyColumn(
@@ -70,7 +82,7 @@ fun ManageUsersScreen(navController: NavController, userViewModel: UserViewModel
                 .padding(top = 8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            items(users.filter { it.role != "admin" }) { user ->
+            items(filteredUsers.filter { it.role != "admin" }) { user ->
                 UserRow(user, navController, userViewModel)
             }
         }

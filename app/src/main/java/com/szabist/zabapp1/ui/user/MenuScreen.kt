@@ -20,12 +20,14 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -46,24 +48,42 @@ fun MenuScreen(
 ) {
     val menuItems by menuViewModel.menuItems.collectAsState()
     val coroutineScope = rememberCoroutineScope()
+    var searchQuery by remember { mutableStateOf("") }
 
-    LazyColumn(
-        modifier = Modifier.padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        items(menuItems.size) { index ->
-            val menuItem = menuItems[index]
-            MenuItemCard(
-                menuItem = menuItem,
-                onAddToCart = { quantity ->
-                    coroutineScope.launch {
-                        cartViewModel.addToCart(menuItem, quantity)
+    val filteredMenuItems = menuItems.filter {
+        it.name.contains(searchQuery, ignoreCase = true) ||
+                (menuViewModel.getCategoryNameById(it.categoryId)
+                    ?.contains(searchQuery, ignoreCase = true) == true)
+    }
+    Column(modifier = Modifier.padding(16.dp)) {
+        // Search Bar
+        TextField(
+            value = searchQuery,
+            onValueChange = { searchQuery = it },
+            label = { Text("Search Menu Items") },
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        LazyColumn(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(filteredMenuItems.size) { index ->
+                val menuItem = filteredMenuItems[index]
+                MenuItemCard(
+                    menuItem = menuItem,
+                    onAddToCart = { quantity ->
+                        coroutineScope.launch {
+                            cartViewModel.addToCart(menuItem, quantity)
+                        }
+                    },
+                    onClick = {
+                        navController.navigate("menu_item_details/${menuItem.id}")
                     }
-                },
-                onClick = {
-                    navController.navigate("menu_item_details/${menuItem.id}")
-                }
-            )
+                )
+            }
         }
     }
 }
@@ -163,3 +183,4 @@ fun MenuItemCard(
         )
     }
 }
+

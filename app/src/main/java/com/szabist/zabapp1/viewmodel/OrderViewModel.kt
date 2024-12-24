@@ -88,15 +88,20 @@ class OrderViewModel : ViewModel() {
             }
         }
 
-    fun updateOrderStatus(orderId: String, newStatus: String) {
-        viewModelScope.launch(Dispatchers.IO) {
+    @RequiresApi(Build.VERSION_CODES.O)
+    fun updateOrderStatus(orderId: String, newStatus: String,onComplete: () -> Unit = {}){
+    viewModelScope.launch(Dispatchers.IO) {
             orderRepository.updateOrderStatus(orderId, newStatus)
             // Reload past orders after updating status
+            loadAllOrders()
             orderRepository.getOrderById(orderId) { order ->
                 if (order != null) {
                     loadPastOrders(order.userId)
+
                 }
+
             }
+        onComplete()
         }
     }
 

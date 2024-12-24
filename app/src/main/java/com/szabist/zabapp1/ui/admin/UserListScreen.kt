@@ -13,10 +13,14 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -27,7 +31,12 @@ import com.szabist.zabapp1.viewmodel.UserViewModel
 @Composable
 fun UserListScreen(navController: NavController, userViewModel: UserViewModel = viewModel()) {
     val users by userViewModel.users.collectAsState()
+    var searchQuery by remember { mutableStateOf("") }
 
+    val filteredUsers = users.filter {
+        it.username.contains(searchQuery, ignoreCase = true) ||
+                it.email.contains(searchQuery, ignoreCase = true)
+    }
     LaunchedEffect(Unit) {
         userViewModel.fetchUsers()
     }
@@ -35,10 +44,17 @@ fun UserListScreen(navController: NavController, userViewModel: UserViewModel = 
     Column(modifier = Modifier.padding(16.dp)) {
         Text("Select a User", style = MaterialTheme.typography.titleLarge)
         Spacer(modifier = Modifier.height(16.dp))
+        TextField(
+            value = searchQuery,
+            onValueChange = { searchQuery = it },
+            label = { Text("Search Users") },
+            modifier = Modifier.fillMaxWidth()
+        )
 
+        Spacer(modifier = Modifier.height(16.dp))
         LazyColumn {
             // Filter out users with role "admin" and "student"
-            items(users.filter { it.role != "admin" && it.role != "student" }) { user ->
+            items(filteredUsers.filter { it.role != "admin" && it.role != "student" }) { user ->
                 UserRow(user, onClick = { navController.navigate("user_month_list/${user.id}") })
             }
         }
