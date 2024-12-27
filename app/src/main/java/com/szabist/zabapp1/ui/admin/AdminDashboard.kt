@@ -195,27 +195,35 @@ fun AdminDashboard(
 fun AdminAccountSection(onLogout: () -> Unit) {
     Column(
         modifier = Modifier
-            .fillMaxWidth(0.6f) // Adjusted width to 60% of the screen
+            .fillMaxWidth(0.6f)
             .padding(16.dp)
-            .background(MaterialTheme.colorScheme.surface, shape = MaterialTheme.shapes.medium) // Clean background with Material theme surface
-            .padding(16.dp), // Added padding for content inside
-        horizontalAlignment = Alignment.Start, // Align content to the start (left)
-        verticalArrangement = Arrangement.spacedBy(8.dp) // Space between items
+            .background(MaterialTheme.colorScheme.surface, shape = MaterialTheme.shapes.medium)
+            .padding(16.dp),
+        horizontalAlignment = Alignment.Start,
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Text(
             text = "Admin Account",
             style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurface // Ensure text color contrasts with background
+            color = MaterialTheme.colorScheme.onSurface
         )
         Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = "Name: Admin",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            text = "Role: Super Admin",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.height(8.dp))
 
-        // Logout button
         Button(
-            onClick = { onLogout() },
-            modifier = Modifier
-                .fillMaxWidth() // Make the button span the full width
-                .padding(top = 16.dp), // Add some spacing from the text
-            shape = MaterialTheme.shapes.medium // Rounded button shape for better UI
+            onClick = onLogout,
+            modifier = Modifier.fillMaxWidth(),
+            shape = MaterialTheme.shapes.medium
         ) {
             Text("Logout", style = MaterialTheme.typography.bodyLarge)
         }
