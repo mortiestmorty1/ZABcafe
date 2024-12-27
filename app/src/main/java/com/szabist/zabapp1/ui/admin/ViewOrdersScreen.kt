@@ -49,12 +49,13 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.szabist.zabapp1.data.model.Order
+import com.szabist.zabapp1.viewmodel.MonthlyBillViewModel
 import com.szabist.zabapp1.viewmodel.OrderViewModel
 
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ViewOrdersScreen(navController: NavController, orderViewModel: OrderViewModel = viewModel()) {
+fun ViewOrdersScreen(navController: NavController, orderViewModel: OrderViewModel = viewModel(),monthlyBillViewModel: MonthlyBillViewModel = viewModel()) {
     val orders by orderViewModel.orders.collectAsState()
 
     LaunchedEffect(Unit) {
@@ -85,7 +86,23 @@ fun ViewOrdersScreen(navController: NavController, orderViewModel: OrderViewMode
                     completedOrders = completedOrders,
                     onBack = { selectedCategory = null },
                     onStatusChange = { orderId, newStatus ->
-                        orderViewModel.updateOrderStatus(orderId, newStatus)
+                        orderViewModel.updateOrderStatus(
+                            orderId = orderId,
+                            newStatus = newStatus,
+                            handleMonthlyBill = { acceptedOrder ->
+                                monthlyBillViewModel.handleOrder(
+                                    order = acceptedOrder,
+                                    userId = acceptedOrder.userId,
+                                    orderViewModel = orderViewModel
+                                ) { success, _ ->
+                                    if (success) {
+                                        // Optionally log or show success
+                                    } else {
+                                        // Optionally log or show failure
+                                    }
+                                }
+                            }
+                        )
                         orderViewModel.loadAllOrders()
                     }
                 )
@@ -93,20 +110,12 @@ fun ViewOrdersScreen(navController: NavController, orderViewModel: OrderViewMode
         }
     }
 }
-
-// OrderCategoryScreen and other functions remain the same
-
-// Updated OrderAdminItem with User Name and Payment Type
-
-
-// Order Category Enum
 enum class OrderCategory(val displayName: String) {
     NewOrders("New Orders"),
     CurrentOrders("Current Orders"),
     CompletedOrders("Completed Orders")
 }
 
-// Category Selection Screen
 @Composable
 fun CategorySelectionScreen(onCategorySelected: (OrderCategory) -> Unit) {
     Column(
@@ -125,7 +134,6 @@ fun CategorySelectionScreen(onCategorySelected: (OrderCategory) -> Unit) {
     }
 }
 
-// Reusable Category Card
 @Composable
 fun CategoryCard(title: String, color: Color, onClick: () -> Unit) {
     Card(
@@ -138,7 +146,6 @@ fun CategoryCard(title: String, color: Color, onClick: () -> Unit) {
     }
 }
 
-// Display Orders Based on the Selected Category
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OrderCategoryScreen(
@@ -174,7 +181,6 @@ fun OrderCategoryScreen(
         }
     ) {
         Column(modifier = Modifier.padding(it)) {
-            // Search Bar
             TextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
@@ -191,8 +197,6 @@ fun OrderCategoryScreen(
         }
     }
 }
-
-// Updated Order Item with Button Visibility Based on Status
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OrderAdminItem(order: Order, onStatusChange: (String, String) -> Unit) {
@@ -237,7 +241,6 @@ fun OrderAdminItem(order: Order, onStatusChange: (String, String) -> Unit) {
                     )
                 }
             }
-
             if (order.status == "Accepted" || order.status == "Prepare") {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                     OrderStatusButton(
@@ -256,8 +259,6 @@ fun OrderAdminItem(order: Order, onStatusChange: (String, String) -> Unit) {
                     )
                 }
             }
-
-            // Button for "Completed"
             if (order.status == "Ready for Pickup") {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
                     OrderStatusButton(
@@ -272,8 +273,6 @@ fun OrderAdminItem(order: Order, onStatusChange: (String, String) -> Unit) {
         }
     }
 }
-
-// Reusable Order Status Button
 @Composable
 fun OrderStatusButton(displayStatus: String,
                       backendStatus: String, icon: ImageVector, onStatusChange: (String) -> Unit, backgroundColor: Color) {

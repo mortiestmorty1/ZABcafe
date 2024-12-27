@@ -89,7 +89,12 @@ class OrderRepository {
     fun deleteOrder(orderId: String) {
         ordersRef.child(orderId).removeValue()
     }
-    fun updateOrderStatus(orderId: String, newStatus: String) {
-        ordersRef.child(orderId).child("status").setValue(newStatus)
+    fun updateOrderStatus(orderId: String, newStatus: String, callback: (Boolean) -> Unit) {
+        ordersRef.child(orderId).child("status").setValue(newStatus).addOnSuccessListener {
+            callback(true)
+        }.addOnFailureListener {
+            callback(false)
+        }
     }
+
 }

@@ -24,40 +24,34 @@ class MonthlyBillViewModel : ViewModel() {
 
     @RequiresApi(Build.VERSION_CODES.O)
     fun handleOrder(order: Order, userId: String, orderViewModel: OrderViewModel, callback: (Boolean, String?) -> Unit) {
-        order.timestamp = Date()
-        orderViewModel.addOrder(order, onSuccess = { success, orderId ->
-            if (success && orderId != null) {
-                val month = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM"))
-                viewModelScope.launch(Dispatchers.IO) {
-                    monthlyBillRepository.getMonthlyBillByMonth(userId, month) { existingBill ->
-                        if (existingBill != null) {
-                            existingBill.orders += order
-                            existingBill.amount += order.totalAmount
-                            existingBill.ordersMade = true
-                            updateMonthlyBill(existingBill) {
-                                callback(true, orderId)
-                            }
-                        } else {
-                            val newBill = MonthlyBill(
-                                userId = userId,
-                                month = month,
-                                amount = order.totalAmount,
-                                orders = listOf(order),
-                                ordersMade = true
-                            )
-                            addMonthlyBill(newBill) {
-                                callback(true, orderId)
-                            }
-                        }
+        viewModelScope.launch(Dispatchers.IO) {
+            val month = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM"))
+            order.timestamp = Date()
+            monthlyBillRepository.getMonthlyBillByMonth(userId, month) { existingBill ->
+                if (existingBill != null) {
+                    // Add the order to the existing bill
+                    existingBill.orders += order
+                    existingBill.amount += order.totalAmount
+                    updateMonthlyBill(existingBill) { success ->
+                        callback(success, order.id)
+                    }
+                } else {
+                    // Create a new bill if none exists
+                    val newBill = MonthlyBill(
+                        userId = userId,
+                        month = month,
+                        amount = order.totalAmount,
+                        orders = listOf(order),
+                        ordersMade = true
+                    )
+                    addMonthlyBill(newBill) { success ->
+                        callback(success, order.id)
                     }
                 }
-            } else {
-                callback(false, null)
             }
-        }, onFailure = {
-            callback(false, null)
-        })
+        }
     }
+
 
     @RequiresApi(Build.VERSION_CODES.O)
     fun handleFullPayment(billId: String, callback: (Boolean) -> Unit) {

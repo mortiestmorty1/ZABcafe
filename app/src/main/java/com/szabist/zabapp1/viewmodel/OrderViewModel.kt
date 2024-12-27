@@ -89,19 +89,27 @@ class OrderViewModel : ViewModel() {
         }
 
     @RequiresApi(Build.VERSION_CODES.O)
-    fun updateOrderStatus(orderId: String, newStatus: String,onComplete: () -> Unit = {}){
-    viewModelScope.launch(Dispatchers.IO) {
-            orderRepository.updateOrderStatus(orderId, newStatus)
-            // Reload past orders after updating status
-            loadAllOrders()
-            orderRepository.getOrderById(orderId) { order ->
-                if (order != null) {
-                    loadPastOrders(order.userId)
-
+    fun updateOrderStatus(
+        orderId: String,
+        newStatus: String,
+        handleMonthlyBill: (Order) -> Unit = {},
+        onComplete: () -> Unit = {}
+    ) {
+        viewModelScope.launch(Dispatchers.IO) {
+            orderRepository.updateOrderStatus(orderId, newStatus) { success ->
+                if (success) {
+                    orderRepository.getOrderById(orderId) { order ->
+                        if (order != null) {
+                            // Check if the order is a bill-type and status is Accepted
+                            if (newStatus == "Accepted" && order.paymentMethod == "bill") {
+                                handleMonthlyBill(order) // Trigger the monthly bill update
+                            }
+                            loadAllOrders() // Refresh orders
+                        }
+                    }
                 }
-
+                onComplete()
             }
-        onComplete()
         }
     }
 

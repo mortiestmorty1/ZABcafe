@@ -135,7 +135,8 @@ fun processBillOrder(
     monthlyBillViewModel: MonthlyBillViewModel,
     navController: NavController
 ) {
-    monthlyBillViewModel.handleOrder(order, order.userId, orderViewModel) { success, orderId ->
+    order.status = "pending" // Set initial status to pending
+    orderViewModel.addOrder(order, onSuccess = { success, orderId ->
         if (success && orderId != null) {
             cartViewModel.clearCart()
             navController.navigate("order_details/$orderId") {
@@ -144,7 +145,9 @@ fun processBillOrder(
         } else {
             Log.e("CheckoutScreen", "Failed to process bill order")
         }
-    }
+    }, onFailure = {
+        Log.e("CheckoutScreen", "Failed to process bill order")
+    })
 }
 
 @Composable
