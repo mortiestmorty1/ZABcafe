@@ -30,6 +30,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -40,10 +41,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color.Companion.Blue
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
@@ -77,18 +80,15 @@ fun AdminDashboard(
             TopAppBar(
                 title = {
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp),  // Optional padding for centering
+                        modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
+                        horizontalArrangement = Arrangement.Center // Centers the content
                     ) {
                         Image(
                             painter = painterResource(id = R.drawable.logo),
                             contentDescription = "App Logo",
-                            modifier = Modifier.size(80.dp)  // Set both width and height to 80.dp
+                            modifier = Modifier.size(50.dp) // Adjust size if needed
                         )
-
                     }
                 },
                 navigationIcon = {
@@ -99,16 +99,30 @@ fun AdminDashboard(
             )
         },
         bottomBar = {
-            NavigationBar {
+            NavigationBar(
+                modifier = Modifier.height(64.dp),
+                containerColor = MaterialTheme.colorScheme.surface // Set the background color
+            ) {
                 val navBackStackEntry = navController.currentBackStackEntry
                 val currentRoute = navBackStackEntry?.destination?.route
                 items.forEach { item ->
                     NavigationBarItem(
-                        icon = { Icon(imageVector = item.icon, contentDescription = item.title) },
-                        label = { Text(item.title) },
-                        selected = currentRoute == item.route,
+                        icon = {
+                            Icon(
+                                imageVector = item.icon,
+                                contentDescription = item.title,
+                                modifier = Modifier.size(24.dp) // Standard icon size
+                            )
+                        },
+                        label = {
+                            Text(
+                                item.title,
+                                style = MaterialTheme.typography.bodySmall // Adjust text size
+                            )
+                        },
+                        selected = currentRoute?.contains(item.route) == true, // Updated logic for better matching
                         onClick = {
-                            if (currentRoute != item.route) {
+                            if (currentRoute?.contains(item.route) != true) { // Prevent re-navigation to the same route
                                 navController.navigate(item.route) {
                                     popUpTo(navController.graph.findStartDestination().id) {
                                         saveState = false
@@ -117,23 +131,30 @@ fun AdminDashboard(
                                     restoreState = false
                                 }
                             }
-                        }
+                        },
+                        alwaysShowLabel = true,
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = Blue,
+                            selectedTextColor = Blue,
+                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     )
                 }
             }
         }
     ) { innerPadding ->
         Row(modifier = Modifier.padding(innerPadding)) {
-            // Collapsible account section sliding from left to right
+            // Collapsible account section
             AnimatedVisibility(
                 visible = accountSectionVisible,
                 enter = slideInHorizontally(initialOffsetX = { -it }, animationSpec = tween(300)),
-                exit = slideOutHorizontally(targetOffsetX = { -it }, animationSpec = tween(300))
+                exit = slideOutHorizontally(targetOffsetX = { -it }, animationSpec = tween(300)),
+                modifier = Modifier.zIndex(1f) // Ensures visibility over other layers
             ) {
                 AdminAccountSection(onLogout = { activity.logout() })
             }
 
-            // Navigation host
             Column(modifier = Modifier.fillMaxWidth()) {
                 NavHost(navController, startDestination = AdminNavItem.Menu.route) {
                     composable(AdminNavItem.Menu.route) {

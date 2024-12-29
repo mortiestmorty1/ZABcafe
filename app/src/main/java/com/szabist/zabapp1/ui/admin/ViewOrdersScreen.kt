@@ -1,9 +1,7 @@
 
 import android.os.Build
 import androidx.annotation.RequiresApi
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -15,6 +13,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Build
@@ -33,6 +32,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -55,7 +55,11 @@ import com.szabist.zabapp1.viewmodel.OrderViewModel
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ViewOrdersScreen(navController: NavController, orderViewModel: OrderViewModel = viewModel(),monthlyBillViewModel: MonthlyBillViewModel = viewModel()) {
+fun ViewOrdersScreen(
+    navController: NavController,
+    orderViewModel: OrderViewModel = viewModel(),
+    monthlyBillViewModel: MonthlyBillViewModel = viewModel()
+) {
     val orders by orderViewModel.orders.collectAsState()
 
     LaunchedEffect(Unit) {
@@ -68,45 +72,39 @@ fun ViewOrdersScreen(navController: NavController, orderViewModel: OrderViewMode
 
     var selectedCategory by remember { mutableStateOf<OrderCategory?>(null) }
 
-    Scaffold(
-        topBar = { TopAppBar(title = { Text("View Orders") }) }
+    Column(
+        modifier = Modifier.fillMaxSize()
     ) {
-        Column(modifier = Modifier.padding(it).fillMaxSize()) {
-            if (selectedCategory == null) {
-                CategorySelectionScreen(
-                    onCategorySelected = { category ->
-                        selectedCategory = category
-                    }
-                )
-            } else {
-                OrderCategoryScreen(
-                    category = selectedCategory!!,
-                    newOrders = newOrders,
-                    currentOrders = currentOrders,
-                    completedOrders = completedOrders,
-                    onBack = { selectedCategory = null },
-                    onStatusChange = { orderId, newStatus ->
-                        orderViewModel.updateOrderStatus(
-                            orderId = orderId,
-                            newStatus = newStatus,
-                            handleMonthlyBill = { acceptedOrder ->
-                                monthlyBillViewModel.handleOrder(
-                                    order = acceptedOrder,
-                                    userId = acceptedOrder.userId,
-                                    orderViewModel = orderViewModel
-                                ) { success, _ ->
-                                    if (success) {
-                                        // Optionally log or show success
-                                    } else {
-                                        // Optionally log or show failure
-                                    }
-                                }
+        if (selectedCategory == null) {
+            FullScreenCategoryButtons(
+                onCategorySelected = { category ->
+                    selectedCategory = category
+                }
+            )
+        } else {
+            OrderCategoryScreen(
+                category = selectedCategory!!,
+                newOrders = newOrders,
+                currentOrders = currentOrders,
+                completedOrders = completedOrders,
+                onBack = { selectedCategory = null },
+                onStatusChange = { orderId, newStatus ->
+                    orderViewModel.updateOrderStatus(
+                        orderId = orderId,
+                        newStatus = newStatus,
+                        handleMonthlyBill = { acceptedOrder ->
+                            monthlyBillViewModel.handleOrder(
+                                order = acceptedOrder,
+                                userId = acceptedOrder.userId,
+                                orderViewModel = orderViewModel
+                            ) { success, _ ->
+                                // Handle success or failure
                             }
-                        )
-                        orderViewModel.loadAllOrders()
-                    }
-                )
-            }
+                        }
+                    )
+                    orderViewModel.loadAllOrders()
+                }
+            )
         }
     }
 }
@@ -117,35 +115,66 @@ enum class OrderCategory(val displayName: String) {
 }
 
 @Composable
-fun CategorySelectionScreen(onCategorySelected: (OrderCategory) -> Unit) {
+fun FullScreenCategoryButtons(onCategorySelected: (OrderCategory) -> Unit) {
     Column(
-        modifier = Modifier.fillMaxWidth().padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically) // Reduced spacing
     ) {
-        CategoryCard("New Orders", color = MaterialTheme.colorScheme.primary) {
-            onCategorySelected(OrderCategory.NewOrders)
-        }
-        CategoryCard("Current Orders", color = MaterialTheme.colorScheme.secondary) {
-            onCategorySelected(OrderCategory.CurrentOrders)
-        }
-        CategoryCard("Completed Orders", color = MaterialTheme.colorScheme.tertiary) {
-            onCategorySelected(OrderCategory.CompletedOrders)
-        }
+        FullScreenCategoryButton(
+            title = "New Orders",
+            icon = Icons.Filled.ThumbUp,
+            color = MaterialTheme.colorScheme.primary,
+            onClick = { onCategorySelected(OrderCategory.NewOrders) }
+        )
+        FullScreenCategoryButton(
+            title = "Current Orders",
+            icon = Icons.Filled.Build,
+            color = MaterialTheme.colorScheme.secondary,
+            onClick = { onCategorySelected(OrderCategory.CurrentOrders) }
+        )
+        FullScreenCategoryButton(
+            title = "Completed Orders",
+            icon = Icons.Filled.Done,
+            color = MaterialTheme.colorScheme.tertiary,
+            onClick = { onCategorySelected(OrderCategory.CompletedOrders) }
+        )
     }
 }
 
 @Composable
-fun CategoryCard(title: String, color: Color, onClick: () -> Unit) {
-    Card(
-        modifier = Modifier.fillMaxWidth().height(100.dp).clickable { onClick() },
-        colors = CardDefaults.cardColors(containerColor = color)
+fun FullScreenCategoryButton(
+    title: String,
+    icon: ImageVector,
+    color: Color,
+    onClick: () -> Unit
+) {
+    Button(
+        onClick = onClick,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp), // Reduced spacing
+        shape = RoundedCornerShape(24.dp), // Increased rounding
+        colors = ButtonDefaults.buttonColors(containerColor = color)
     ) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text(text = title, style = MaterialTheme.typography.titleLarge, color = Color.White)
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = title,
+                tint = Color.White,
+                modifier = Modifier.size(64.dp) // Larger icon
+            )
+            Spacer(modifier = Modifier.height(12.dp)) // Slightly larger space
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleLarge,
+                color = Color.White
+            )
         }
     }
 }
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OrderCategoryScreen(
@@ -168,111 +197,181 @@ fun OrderCategoryScreen(
                 order.userName.contains(searchQuery, ignoreCase = true) ||
                 order.status.contains(searchQuery, ignoreCase = true)
     }
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(category.displayName) },
+                title = { Text(category.displayName, style = MaterialTheme.typography.headlineMedium) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
                     }
                 }
             )
-        }
-    ) {
-        Column(modifier = Modifier.padding(it)) {
+        },
+        containerColor = MaterialTheme.colorScheme.background
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .padding(innerPadding)
+                .fillMaxSize()
+                .padding(horizontal = 16.dp)
+        ) {
+            // Enhanced Search Bar
             TextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
-                label = { Text("Search Orders") },
+                label = { Text("Search Orders", style = MaterialTheme.typography.bodyLarge) },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp)
+                    .padding(vertical = 16.dp),
+                colors = TextFieldDefaults.textFieldColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    focusedLabelColor = MaterialTheme.colorScheme.primary,
+                    unfocusedLabelColor = MaterialTheme.colorScheme.onSurface,
+                    focusedIndicatorColor = MaterialTheme.colorScheme.primary,
+                    unfocusedIndicatorColor = MaterialTheme.colorScheme.onSurface
+                )
             )
-            LazyColumn(modifier = Modifier.padding(it)) {
-                items(filteredOrders, key = { it.id }) { order ->
-                    OrderAdminItem(order = order, onStatusChange = onStatusChange)
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Orders Section
+            if (filteredOrders.isEmpty()) {
+                Text(
+                    text = "No orders found",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                )
+            } else {
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    items(filteredOrders, key = { it.id }) { order ->
+                        EnhancedOrderItem(order = order, onStatusChange = onStatusChange)
+                    }
                 }
             }
         }
     }
 }
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun OrderAdminItem(order: Order, onStatusChange: (String, String) -> Unit) {
-    var isInitialSelection by remember { mutableStateOf(order.status == "pending") }
-
+fun EnhancedOrderItem(order: Order, onStatusChange: (String, String) -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp, horizontal = 8.dp)
+            .padding(horizontal = 8.dp),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(6.dp)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text("Order ID: ${order.id}", style = MaterialTheme.typography.bodyLarge)
-            Text("Order Date: ${order.timestamp}", style = MaterialTheme.typography.bodyMedium)
-            Text("User: ${order.userName}", style = MaterialTheme.typography.bodyLarge)  // Display user name
-            Text("Total: $${order.totalAmount}", style = MaterialTheme.typography.bodyLarge)
-            Text("Payment Type: ${order.paymentMethod}", style = MaterialTheme.typography.bodyLarge)  // Display payment type
-            Text("Status: ${order.status}", style = MaterialTheme.typography.bodyMedium)
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = "Order ID: ${order.id}",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = "Order Date: ${order.timestamp}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = "User: ${order.userName}",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Text(
+                text = "Total: $${order.totalAmount}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = "Payment Type: ${order.paymentMethod}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = "Status: ${order.status}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.secondary
+            )
 
-            Spacer(Modifier.padding(8.dp))
+            Spacer(Modifier.height(12.dp))
 
-            if (isInitialSelection && order.status == "pending") {
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                    OrderStatusButton(
-                        displayStatus = "Accept",
-                        backendStatus = "Accepted",
-                        icon = Icons.Filled.ThumbUp,
-                        onStatusChange = { backendStatus ->
-                            onStatusChange(order.id, backendStatus)
-                            isInitialSelection = false
-                        },
-                        backgroundColor = MaterialTheme.colorScheme.primary
-                    )
-                    OrderStatusButton(
-                        displayStatus = "Reject",
-                        backendStatus = "Rejected",
-                        icon = Icons.Filled.Delete,
-                        onStatusChange = { backendStatus ->
-                            onStatusChange(order.id, backendStatus)
-                            isInitialSelection = false
-                        },
-                        backgroundColor = MaterialTheme.colorScheme.error
+            // Dynamic Buttons
+            when (order.status) {
+                "pending" -> {
+                    OrderActionRow(
+                        actions = listOf(
+                            "Accept" to MaterialTheme.colorScheme.primary,
+                            "Reject" to MaterialTheme.colorScheme.error
+                        ),
+                        icons = listOf(Icons.Filled.ThumbUp, Icons.Filled.Delete),
+                        onClick = { action -> onStatusChange(order.id, action) }
                     )
                 }
-            }
-            if (order.status == "Accepted" || order.status == "Prepare") {
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                    OrderStatusButton(
-                        displayStatus = "Prepare",
-                        backendStatus = "Prepare",
-                        icon = Icons.Filled.Build,
-                        onStatusChange = { backendStatus -> onStatusChange(order.id, backendStatus) },
-                        backgroundColor = MaterialTheme.colorScheme.tertiary
-                    )
-                    OrderStatusButton(
-                        displayStatus = "Ready for Pickup",
-                        backendStatus = "Ready for Pickup",
-                        icon = Icons.Filled.LocationOn,
-                        onStatusChange = { backendStatus -> onStatusChange(order.id, backendStatus) },
-                        backgroundColor = MaterialTheme.colorScheme.secondary
+                "Accepted", "Prepare" -> {
+                    OrderActionRow(
+                        actions = listOf(
+                            "Prepare" to MaterialTheme.colorScheme.tertiary,
+                            "Ready for Pickup" to MaterialTheme.colorScheme.secondary
+                        ),
+                        icons = listOf(Icons.Filled.Build, Icons.Filled.LocationOn),
+                        onClick = { action -> onStatusChange(order.id, action) }
                     )
                 }
-            }
-            if (order.status == "Ready for Pickup") {
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
-                    OrderStatusButton(
-                        displayStatus = "Completed",
-                        backendStatus = "Completed",
-                        icon = Icons.Filled.Done,
-                        onStatusChange = { backendStatus -> onStatusChange(order.id, backendStatus) },
-                        backgroundColor = MaterialTheme.colorScheme.primary
+                "Ready for Pickup" -> {
+                    OrderActionRow(
+                        actions = listOf("Completed" to MaterialTheme.colorScheme.primary),
+                        icons = listOf(Icons.Filled.Done),
+                        onClick = { action -> onStatusChange(order.id, action) }
                     )
                 }
             }
         }
     }
 }
+@Composable
+fun OrderActionRow(
+    actions: List<Pair<String, Color>>,
+    icons: List<ImageVector>,
+    onClick: (String) -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceEvenly
+    ) {
+        actions.forEachIndexed { index, (action, color) ->
+            Button(
+                onClick = { onClick(action) },
+                colors = ButtonDefaults.buttonColors(containerColor = color),
+                modifier = Modifier
+                    .size(width = 140.dp, height = 48.dp)
+            ) {
+                Icon(
+                    imageVector = icons[index],
+                    contentDescription = action,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = action,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = Color.White
+                )
+            }
+        }
+    }
+}
+
 @Composable
 fun OrderStatusButton(displayStatus: String,
                       backendStatus: String, icon: ImageVector, onStatusChange: (String) -> Unit, backgroundColor: Color) {

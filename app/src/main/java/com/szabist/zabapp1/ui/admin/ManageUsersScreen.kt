@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -16,15 +17,18 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -41,41 +45,64 @@ import androidx.navigation.NavController
 import com.szabist.zabapp1.data.model.User
 import com.szabist.zabapp1.viewmodel.UserViewModel
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ManageUsersScreen(navController: NavController, userViewModel: UserViewModel = viewModel()) {
     val users by userViewModel.users.collectAsState()
     var searchQuery by remember { mutableStateOf("") }
+
     LaunchedEffect(Unit) {
         Log.d("ManageUsersScreen", "Fetching users on screen load")
         userViewModel.fetchUsers()
     }
+
     val filteredUsers = users.filter {
         it.username.contains(searchQuery, ignoreCase = true) ||
                 it.email.contains(searchQuery, ignoreCase = true)
     }
-    Column(modifier = Modifier.padding(16.dp)) {
-        Text("Manage Users", style = MaterialTheme.typography.titleLarge)
-        Spacer(modifier = Modifier.height(16.dp))
 
-        Button(
-            onClick = { navController.navigate("add_user") },
-            modifier = Modifier.fillMaxWidth()
+    Column(modifier = Modifier.padding(16.dp)) {
+        // Add User Button and Search Bar in a Row
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(Icons.Filled.Add, contentDescription = "Add User")
-            Text("Add User")
+            TextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                placeholder = { Text("Search Users") },
+                modifier = Modifier
+                    .weight(0.7f)
+                    .height(56.dp), // Adjust height to make it look like a proper input field
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Search, // Replace with search icon
+                        contentDescription = "Search Icon"
+                    )
+                },
+                colors = TextFieldDefaults.textFieldColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    focusedIndicatorColor = Color.Transparent,
+                    unfocusedIndicatorColor = Color.Transparent,
+                    disabledIndicatorColor = Color.Transparent
+                ),
+                shape = RoundedCornerShape(50.dp) // Rounded search bar
+            )
+            Button(
+                onClick = { navController.navigate("add_user") },
+                modifier = Modifier.weight(0.3f)
+            ) {
+                Icon(Icons.Filled.Add, contentDescription = "Add User")
+                Spacer(modifier = Modifier.width(8.dp)) // Spacing between icon and text
+                Text("Add")
+            }
+
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
-        TextField(
-            value = searchQuery,
-            onValueChange = { searchQuery = it },
-            label = { Text("Search Users") },
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // Ensure LazyColumn is set for scrolling
+        // User List
         LazyColumn(
             modifier = Modifier
                 .fillMaxWidth()
@@ -96,7 +123,6 @@ fun UserRow(user: User, navController: NavController, userViewModel: UserViewMod
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp)
             .clickable {
                 if (user.id.isNotEmpty()) {
                     navController.navigate("user_details/${user.id}")
@@ -162,4 +188,6 @@ fun UserRow(user: User, navController: NavController, userViewModel: UserViewMod
         )
     }
 }
+
+
 
