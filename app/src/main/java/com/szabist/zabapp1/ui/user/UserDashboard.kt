@@ -14,9 +14,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBox
@@ -25,6 +26,7 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -34,6 +36,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -54,6 +57,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.szabist.zabapp1.MainActivity
 import com.szabist.zabapp1.R
 import com.szabist.zabapp1.data.model.User
@@ -83,75 +87,88 @@ fun UserDashboard(userId: String, userViewModel: UserViewModel = viewModel(), ca
 
     // Observe the currentUser state from the ViewModel
     val currentUser by userViewModel.currentUser.collectAsState()
-
     Scaffold(
         topBar = {
             TopAppBar(
+                navigationIcon = {
+                    IconButton(onClick = { accountSectionVisible = !accountSectionVisible }) {
+                        Icon(
+                            imageVector = Icons.Default.AccountBox,
+                            contentDescription = "Account",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                },
                 title = {
                     Row(
                         modifier = Modifier
-                            .fillMaxWidth(),
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp),
+                        horizontalArrangement = Arrangement.Center,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // Spacer to push the logo to the center
-                        Spacer(modifier = Modifier.weight(1f))
-
-                        // Logo in the center
                         Image(
                             painter = painterResource(id = R.drawable.logo),
                             contentDescription = "App Logo",
                             modifier = Modifier.size(80.dp)
                         )
-
-                        // Spacer to balance the logo in the center
-                        Spacer(modifier = Modifier.weight(1f))
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = { accountSectionVisible = !accountSectionVisible }) {
-                        Icon(Icons.Filled.AccountBox, contentDescription = "Account")
                     }
                 },
                 actions = {
                     IconButton(onClick = { navController.navigate("cart") }) {
-                        Icon(Icons.Filled.ShoppingCart, contentDescription = "Cart")
-                        val cartItems by cartViewModel.cartItems.collectAsState()
-                        if (cartItems.isNotEmpty()) {
-                            Box(
-                                modifier = Modifier
-                                    .align(Alignment.Top)
-                                    .size(20.dp)
-                                    .background(Color.Red, shape = CircleShape),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = cartItems.size.toString(),
-                                    color = Color.White,
-                                    style = MaterialTheme.typography.bodySmall
-                                )
+                        Box {
+                            // Cart Icon
+                            Icon(
+                                imageVector = Icons.Filled.ShoppingCart,
+                                contentDescription = "Cart",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+
+                            // Badge for cart items
+                            val cartItems by cartViewModel.cartItems.collectAsState()
+                            if (cartItems.isNotEmpty()) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(20.dp)
+                                        .offset(x = (-4).dp, y = 6.dp) // Adjust badge to bottom-left
+                                        .background(Color.Red, shape = CircleShape),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = cartItems.size.toString(),
+                                        color = Color.White,
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                }
                             }
                         }
                     }
-                }
+                },
+                colors = TopAppBarDefaults.smallTopAppBarColors(
+                    containerColor = Color.Transparent
+                )
             )
         },
+
         bottomBar = {
             NavigationBar {
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
                 val currentRoute = navBackStackEntry?.destination?.route
                 items.forEach { item ->
                     NavigationBarItem(
-                        icon = { Icon(imageVector = item.icon, contentDescription = item.title) },
+                        icon = {
+                            Icon(imageVector = item.icon, contentDescription = item.title)
+                        },
                         label = { Text(item.title) },
                         selected = currentRoute == item.route,
                         onClick = {
                             if (currentRoute != item.route) {
                                 navController.navigate(item.route) {
                                     popUpTo(navController.graph.findStartDestination().id) {
-                                        saveState = false
+                                        saveState = true
                                     }
                                     launchSingleTop = true
-                                    restoreState = false
+                                    restoreState = true
                                 }
                             }
                         }
@@ -161,7 +178,6 @@ fun UserDashboard(userId: String, userViewModel: UserViewModel = viewModel(), ca
         }
     ) { innerPadding ->
         Row(modifier = Modifier.padding(innerPadding)) {
-            // Collapsible account section sliding from left to right
             AnimatedVisibility(
                 visible = accountSectionVisible,
                 enter = slideInHorizontally(initialOffsetX = { -it }, animationSpec = tween(300)),
@@ -205,10 +221,15 @@ fun UserDashboard(userId: String, userViewModel: UserViewModel = viewModel(), ca
                             viewModel = viewModel()
                         )
                     }
-                    composable("order_details/{orderId}") { backStackEntry ->
+                    composable("order_details/{orderId}?fromCheckout={fromCheckout}", arguments = listOf(
+                        navArgument("fromCheckout") { defaultValue = "false" }
+                    )) { backStackEntry ->
+                        val orderId = backStackEntry.arguments?.getString("orderId") ?: ""
+                        val fromCheckout = backStackEntry.arguments?.getString("fromCheckout")?.toBoolean() ?: false
                         OrderDetailsScreen(
                             navController = navController,
-                            orderId = backStackEntry.arguments?.getString("orderId") ?: "",
+                            orderId = orderId,
+                            fromCheckout = fromCheckout,
                             orderViewModel = viewModel()
                         )
                     }
@@ -223,17 +244,18 @@ fun AccountSection(user: User?, onLogout: () -> Unit) {
     user?.let {
         Column(
             modifier = Modifier
-                .fillMaxWidth(0.6f) // Adjusted width to 60% of the screen
+                .fillMaxWidth(0.8f)
                 .padding(16.dp)
-                .background(MaterialTheme.colorScheme.surface, shape = MaterialTheme.shapes.medium) // Clean background with Material theme surface
-                .padding(16.dp), // Added padding for content inside
-            horizontalAlignment = Alignment.Start, // Align content to the start (left)
-            verticalArrangement = Arrangement.spacedBy(8.dp) // Space between items
+                .background(MaterialTheme.colorScheme.surface, shape = MaterialTheme.shapes.medium)
+                .padding(16.dp),
+            horizontalAlignment = Alignment.Start,
+            verticalArrangement = Arrangement.spacedBy(12.dp) // Added more space between items
         ) {
+            // User details
             Text(
                 text = "Name: ${user.username}",
                 style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurface // Ensure text color contrasts with background
+                color = MaterialTheme.colorScheme.onSurface
             )
             Text(
                 text = "Email: ${user.email}",
@@ -245,27 +267,37 @@ fun AccountSection(user: User?, onLogout: () -> Unit) {
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurface
             )
+            Text(
+                text = "Role: ${user.role}",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface
+            )
 
-            Spacer(modifier = Modifier.height(16.dp)) // Added space before the logout button
+            Spacer(modifier = Modifier.weight(1f)) // Pushes the logout button to the bottom
 
-            // Make logout button more prominent
+            // Logout button
             Button(
-                onClick = { onLogout() },
-                modifier = Modifier
-                    .fillMaxWidth() // Make the button span the full width
-                    .padding(top = 16.dp), // Add some spacing from the text
-                shape = MaterialTheme.shapes.medium // Rounded button shape for better UI
+                onClick = onLogout,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                shape = MaterialTheme.shapes.medium
             ) {
-                Text("Logout", style = MaterialTheme.typography.bodyLarge)
+                Icon(
+                    imageVector = Icons.Default.AccountBox,
+                    contentDescription = "Logout",
+                    tint = MaterialTheme.colorScheme.onError
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Logout", color = MaterialTheme.colorScheme.onError)
             }
         }
     } ?: run {
-        // Display loading text with appropriate padding and background
+        // Loading state
         Text(
             text = "Loading user details...",
             style = MaterialTheme.typography.bodyLarge,
             modifier = Modifier
-                .fillMaxWidth(0.6f)
+                .fillMaxWidth()
                 .padding(16.dp)
                 .background(MaterialTheme.colorScheme.surface, shape = MaterialTheme.shapes.medium)
                 .padding(16.dp),
@@ -273,6 +305,7 @@ fun AccountSection(user: User?, onLogout: () -> Unit) {
         )
     }
 }
+
 
 sealed class UserNavItem(val route: String, val icon: ImageVector, val title: String) {
     object Menu : UserNavItem("menu", Icons.Filled.Home, "Menu")

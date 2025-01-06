@@ -55,6 +55,7 @@ import androidx.navigation.compose.rememberNavController
 import com.szabist.zabapp1.MainActivity
 import com.szabist.zabapp1.R
 import com.szabist.zabapp1.viewmodel.AdminViewModel
+import java.time.YearMonth
 
 
 @RequiresApi(Build.VERSION_CODES.O)
@@ -194,14 +195,20 @@ fun AdminDashboard(
                         UserListScreen(navController)
                     }
                     composable("user_month_list/{userId}") { backStackEntry ->
-                        val userId = backStackEntry.arguments?.getString("userId") ?: return@composable
-                        MonthListScreen(navController = navController, userId = userId)
+                        val userId = backStackEntry.arguments?.getString("userId") ?: ""
+                        YearSelectionScreen(navController = navController, userId = userId)
+                    }
+                    composable("month_list/{userId}/{year}") { backStackEntry ->
+                        val userId = backStackEntry.arguments?.getString("userId") ?: ""
+                        val year = backStackEntry.arguments?.getString("year")?.toInt() ?: YearMonth.now().year
+                        MonthListScreen(navController = navController, userId = userId, year = year)
                     }
                     composable("user_bills/{userId}/{yearMonth}") { backStackEntry ->
-                        val userId = backStackEntry.arguments?.getString("userId") ?: return@composable
-                        val yearMonth = backStackEntry.arguments?.getString("yearMonth") ?: return@composable
+                        val userId = backStackEntry.arguments?.getString("userId") ?: ""
+                        val yearMonth = backStackEntry.arguments?.getString("yearMonth") ?: ""
                         UserMonthlyBillsScreen(navController = navController, userId = userId, yearMonth = yearMonth)
                     }
+
                     composable("bill_details/{billId}") { backStackEntry ->
                         val billId = backStackEntry.arguments?.getString("billId") ?: return@composable
                         BillDetailsScreen(navController = navController, billId = billId)

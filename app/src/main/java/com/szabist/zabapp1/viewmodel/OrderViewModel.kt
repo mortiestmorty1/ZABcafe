@@ -96,13 +96,23 @@ class OrderViewModel : ViewModel() {
         onComplete: () -> Unit = {}
     ) {
         viewModelScope.launch(Dispatchers.IO) {
-            orderRepository.updateOrderStatus(orderId, newStatus) { success ->
+            // Map or enforce status to backend-required format
+            val validStatuses = mapOf(
+                "Accept" to "Accepted",
+                "Reject" to "Rejected",
+                "Prepare" to "Prepare",
+                "Ready for Pickup" to "Ready for Pickup",
+                "Completed" to "Completed"
+            )
+            val finalStatus = validStatuses[newStatus] ?: newStatus // Default to newStatus if not in map
+
+            orderRepository.updateOrderStatus(orderId, finalStatus) { success ->
                 if (success) {
                     orderRepository.getOrderById(orderId) { order ->
                         if (order != null) {
-                            // Check if the order is a bill-type and status is Accepted
-                            if (newStatus == "Accepted" && order.paymentMethod == "bill") {
-                                handleMonthlyBill(order) // Trigger the monthly bill update
+                            // Handle monthly bill logic if order is accepted
+                            if (finalStatus == "Accepted" && order.paymentMethod == "bill") {
+                                handleMonthlyBill(order)
                             }
                             loadAllOrders() // Refresh orders
                         }
@@ -112,6 +122,7 @@ class OrderViewModel : ViewModel() {
             }
         }
     }
+
 
     fun loadOrderById(orderId: String) {
         viewModelScope.launch(Dispatchers.IO) {

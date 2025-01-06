@@ -7,21 +7,29 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -31,6 +39,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
@@ -40,6 +50,7 @@ import com.szabist.zabapp1.viewmodel.CartViewModel
 import com.szabist.zabapp1.viewmodel.MenuViewModel
 import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MenuScreen(
     navController: NavController,
@@ -55,34 +66,62 @@ fun MenuScreen(
                 (menuViewModel.getCategoryNameById(it.categoryId)
                     ?.contains(searchQuery, ignoreCase = true) == true)
     }
+
     Column(modifier = Modifier.padding(16.dp)) {
-        // Search Bar
-        TextField(
-            value = searchQuery,
-            onValueChange = { searchQuery = it },
-            label = { Text("Search Menu Items") },
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        LazyColumn(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+        // Improved Search Bar
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            items(filteredMenuItems.size) { index ->
-                val menuItem = filteredMenuItems[index]
-                MenuItemCard(
-                    menuItem = menuItem,
-                    onAddToCart = { quantity ->
-                        coroutineScope.launch {
-                            cartViewModel.addToCart(menuItem, quantity)
-                        }
-                    },
-                    onClick = {
-                        navController.navigate("menu_item_details/${menuItem.id}")
+            TextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                placeholder = { Text("Search Menu Items") },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = "Search Icon"
+                    )
+                },
+                modifier = Modifier
+                    .weight(1f)
+                    .height(56.dp),
+                colors = TextFieldDefaults.textFieldColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    focusedIndicatorColor = Color.Transparent,
+                    unfocusedIndicatorColor = Color.Transparent
+                ),
+                shape = RoundedCornerShape(50.dp)
+            )
+        }
+
+        // Grid Layout for Menu Items
+        LazyColumn(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            items(filteredMenuItems.chunked(2)) { rowItems ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    rowItems.forEach { menuItem ->
+                        MenuItemCard(
+                            menuItem = menuItem,
+                            onAddToCart = { quantity ->
+                                coroutineScope.launch {
+                                    cartViewModel.addToCart(menuItem, quantity)
+                                }
+                            },
+                            onClick = {
+                                navController.navigate("menu_item_details/${menuItem.id}")
+                            }
+                        )
                     }
-                )
+                }
             }
         }
     }
@@ -95,22 +134,25 @@ fun MenuItemCard(
     onClick: () -> Unit,
     menuViewModel: MenuViewModel = viewModel()
 ) {
-    val categoryName = menuViewModel.getCategoryNameById(menuItem.categoryId) // Fetch category name
+    val categoryName = menuViewModel.getCategoryNameById(menuItem.categoryId)
     val showDialog = remember { mutableStateOf(false) }
     val quantity = remember { mutableStateOf(1) }
 
+    // Improved Card Layout
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(8.dp)
-            .clip(RoundedCornerShape(16.dp))
+            .height(300.dp)
             .clickable(onClick = onClick),
-        elevation = CardDefaults.cardElevation(8.dp)
+        elevation = CardDefaults.cardElevation(6.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        shape = RoundedCornerShape(16.dp)
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.SpaceBetween
         ) {
+            // Image Section
             if (menuItem.imageUrl != null) {
                 Image(
                     painter = rememberImagePainter(menuItem.imageUrl),
@@ -118,28 +160,84 @@ fun MenuItemCard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(150.dp)
-                        .clip(RoundedCornerShape(8.dp))
+                        .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)),
+                    contentScale = ContentScale.Crop
                 )
             }
-            Text("Name: ${menuItem.name}", style = MaterialTheme.typography.titleLarge)
-            Text("Category: $categoryName", style = MaterialTheme.typography.bodyMedium) // Display category
-            Text("Description: ${menuItem.description}", style = MaterialTheme.typography.bodyLarge)
-            Text("Price: PKR ${menuItem.price}", style = MaterialTheme.typography.bodyLarge)
-            Text(if (menuItem.available) "Available" else "Not Available", style = MaterialTheme.typography.bodyLarge)
-            Spacer(modifier = Modifier.height(8.dp))
-            Button(onClick = { showDialog.value = true }) {
-                Text("Add to Cart")
+
+            // Item Details Section
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = menuItem.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = "PKR ${menuItem.price}",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+
+            // Add to Cart Button
+            Button(
+                onClick = { onAddToCart(1) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp),
+                shape = RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp)
+            ) {
+                Text("Add to Cart", style = MaterialTheme.typography.bodyMedium)
             }
         }
     }
 
+
+
+
     if (showDialog.value) {
-        AlertDialog(
-            onDismissRequest = { showDialog.value = false },
-            title = { Text(text = "Select Quantity") },
-            text = {
+        AddToCartDialog(
+            menuItem = menuItem,
+            quantity = quantity,
+            onAddToCart = {
+                onAddToCart(it)
+                showDialog.value = false
+            },
+            onDismiss = { showDialog.value = false }
+        )
+    }
+}
+
+@Composable
+fun AddToCartDialog(
+    menuItem: MenuItem,
+    quantity: MutableState<Int>,
+    onAddToCart: (Int) -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = "Add to Cart",
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.primary
+            )
+        },
+        text = {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = menuItem.name,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(modifier = Modifier.height(8.dp))
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center
                 ) {
@@ -148,7 +246,7 @@ fun MenuItemCard(
                         modifier = Modifier.size(40.dp),
                         contentPadding = PaddingValues(0.dp)
                     ) {
-                        Text("-")
+                        Text("-", style = MaterialTheme.typography.bodyLarge)
                     }
                     Spacer(modifier = Modifier.width(16.dp))
                     Text(
@@ -161,26 +259,21 @@ fun MenuItemCard(
                         modifier = Modifier.size(40.dp),
                         contentPadding = PaddingValues(0.dp)
                     ) {
-                        Text("+")
+                        Text("+", style = MaterialTheme.typography.bodyLarge)
                     }
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        onAddToCart(quantity.value)
-                        showDialog.value = false
-                    }
-                ) {
-                    Text("Add")
-                }
-            },
-            dismissButton = {
-                Button(onClick = { showDialog.value = false }) {
-                    Text("Cancel")
                 }
             }
-        )
-    }
+        },
+        confirmButton = {
+            Button(onClick = { onAddToCart(quantity.value) }) {
+                Text("Add")
+            }
+        },
+        dismissButton = {
+            Button(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
 }
 

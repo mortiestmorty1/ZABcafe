@@ -69,6 +69,7 @@ dependencies {
     implementation(libs.androidx.room.common)
     implementation(libs.firebase.storage.ktx)
     implementation(libs.firebase.messaging.ktx)
+    implementation(libs.places)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

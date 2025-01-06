@@ -11,10 +11,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AddCircle
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
@@ -23,8 +26,8 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -43,7 +46,11 @@ import com.szabist.zabapp1.data.model.MenuItem
 import com.szabist.zabapp1.viewmodel.MenuViewModel
 
 @Composable
-fun EditMenuItemScreen(navController: NavController, menuItemId: String, menuViewModel: MenuViewModel = viewModel()) {
+fun EditMenuItemScreen(
+    navController: NavController,
+    menuItemId: String,
+    menuViewModel: MenuViewModel = viewModel()
+) {
     var menuItem by remember { mutableStateOf<MenuItem?>(null) }
     var isLoading by remember { mutableStateOf(true) }
 
@@ -56,16 +63,14 @@ fun EditMenuItemScreen(navController: NavController, menuItemId: String, menuVie
 
     if (isLoading) {
         Box(
-            modifier = Modifier
-                .fillMaxSize(),
-            contentAlignment = Alignment.Center // Correct way to align content at the center
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
         ) {
             CircularProgressIndicator(
                 modifier = Modifier.padding(32.dp)
             )
         }
-    }
-    else {
+    } else {
         menuItem?.let { item ->
             EditMenuItemForm(item, navController, menuViewModel)
         }
@@ -102,33 +107,42 @@ fun EditMenuItemForm(
             )
 
             // Name Input
-            TextField(
+            OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },
                 label = { Text("Name") },
                 modifier = Modifier.fillMaxWidth(),
-                singleLine = true
+                singleLine = true,
+                leadingIcon = {
+                    Icon(imageVector = Icons.Default.Edit, contentDescription = "Name Icon")
+                }
             )
             Spacer(modifier = Modifier.height(8.dp))
 
             // Description Input
-            TextField(
+            OutlinedTextField(
                 value = description,
                 onValueChange = { description = it },
                 label = { Text("Description") },
                 modifier = Modifier.fillMaxWidth(),
-                maxLines = 4
+                maxLines = 4,
+                leadingIcon = {
+                    Icon(imageVector = Icons.Default.Edit, contentDescription = "Description Icon")
+                }
             )
             Spacer(modifier = Modifier.height(8.dp))
 
             // Price Input
-            TextField(
+            OutlinedTextField(
                 value = price,
                 onValueChange = { price = it },
                 label = { Text("Price") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
-                isError = price.toDoubleOrNull() == null
+                isError = price.toDoubleOrNull() == null,
+                leadingIcon = {
+                    Icon(imageVector = Icons.Default.Edit, contentDescription = "Price Icon")
+                }
             )
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -138,13 +152,13 @@ fun EditMenuItemForm(
                     checked = available,
                     onCheckedChange = { available = it }
                 )
-                Text("Available", style = MaterialTheme.typography.bodyLarge)
+                Text("Available", style = MaterialTheme.typography.bodyMedium)
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
             // Category Dropdown
-            Text("Category", style = MaterialTheme.typography.labelLarge)
+            Text("Category", style = MaterialTheme.typography.labelMedium)
             Spacer(modifier = Modifier.height(8.dp))
 
             Row(
@@ -152,20 +166,20 @@ fun EditMenuItemForm(
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(8.dp))
                     .clickable { expanded = true }
-                    .padding(16.dp),
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 currentCategory?.let {
                     Text(
                         text = it.ifEmpty { "Select a category" },
-                        style = MaterialTheme.typography.bodyLarge,
+                        style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.weight(1f)
                     )
                 }
-                Spacer(modifier = Modifier.width(8.dp))
                 Icon(
-                    imageVector = Icons.Default.Edit,
-                    contentDescription = "Dropdown Icon"
+                    imageVector = Icons.Default.ArrowDropDown,
+                    contentDescription = "Dropdown Icon",
+                    tint = MaterialTheme.colorScheme.primary
                 )
             }
             DropdownMenu(
@@ -188,8 +202,17 @@ fun EditMenuItemForm(
             // Image Picker Button
             Button(
                 onClick = { imagePickerLauncher.launch("image/*") },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp),
+                shape = RoundedCornerShape(8.dp)
             ) {
+                Icon(
+                    imageVector = Icons.Default.AddCircle,
+                    contentDescription = "Select Image",
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
                 Text("Select Image")
             }
 
@@ -201,7 +224,7 @@ fun EditMenuItemForm(
                     contentDescription = "Existing Image",
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(200.dp)
+                        .height(150.dp)
                         .clip(RoundedCornerShape(8.dp))
                 )
             }
@@ -214,7 +237,7 @@ fun EditMenuItemForm(
                     contentDescription = "Selected Image",
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(200.dp)
+                        .height(150.dp)
                         .clip(RoundedCornerShape(8.dp))
                 )
             }
@@ -237,10 +260,19 @@ fun EditMenuItemForm(
                         if (success) navController.popBackStack()
                     }
                 },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp),
+                shape = RoundedCornerShape(8.dp),
                 enabled = !isLoading && name.isNotBlank() && description.isNotBlank() && price.toDoubleOrNull() != null
             ) {
-                Text(if (isLoading) "Updating..." else "Update Menu Item")
+                Icon(
+                    imageVector = Icons.Default.Edit,
+                    contentDescription = "Update Icon",
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(if (isLoading) "Updating..." else "Update")
             }
         }
     }
