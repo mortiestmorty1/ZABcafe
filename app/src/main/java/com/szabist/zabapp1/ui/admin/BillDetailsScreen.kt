@@ -37,6 +37,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
@@ -53,6 +54,7 @@ fun BillDetailsScreen(
 ) {
     val bill by viewModel.selectedBill.collectAsState()
     var showPaymentDialog by remember { mutableStateOf(false) }
+    val context = LocalContext.current
 
     LaunchedEffect(billId) {
         viewModel.getBillById(billId)
@@ -118,10 +120,7 @@ fun BillDetailsScreen(
                 Spacer(Modifier.height(16.dp))
 
                 // Payment Status
-                PaymentStatusLabel(
-                    paid = bill!!.paid,
-                    partiallyPaid = bill!!.partialPaid
-                )
+                PaymentStatusLabel(paid = bill!!.paid)
 
                 Spacer(modifier = Modifier.height(16.dp))
 
@@ -132,7 +131,7 @@ fun BillDetailsScreen(
                         modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                     ) {
-                        Text("Mark as Paid / Partially Paid", color = MaterialTheme.colorScheme.onPrimary)
+                        Text("Mark as Paid", color = MaterialTheme.colorScheme.onPrimary)
                     }
                 }
             }
@@ -151,15 +150,7 @@ fun BillDetailsScreen(
                 totalAmount = bill!!.amount,
                 arrears = bill!!.arrears,
                 onConfirmFullPayment = {
-                    viewModel.handleFullPayment(billId) { success ->
-                        if (success) {
-                            showPaymentDialog = false
-                            viewModel.getBillById(billId) // Refresh UI
-                        }
-                    }
-                },
-                onConfirmPartialPayment = { partialPaymentAmount ->
-                    viewModel.handlePartialPayment(billId, partialPaymentAmount) { success ->
+                    viewModel.handleFullPayment(billId, context) { success ->
                         if (success) {
                             showPaymentDialog = false
                             viewModel.getBillById(billId) // Refresh UI
@@ -223,11 +214,11 @@ fun DetailItem(label: String, value: String, valueColor: Color = MaterialTheme.c
 }
 
 @Composable
-fun PaymentStatusLabel(paid: Boolean, partiallyPaid: Boolean) {
-    val (statusText, color) = when {
-        paid && partiallyPaid -> "Status: Partially Paid" to MaterialTheme.colorScheme.secondary
-        paid -> "Status: Paid" to MaterialTheme.colorScheme.primary
-        else -> "Status: Unpaid" to MaterialTheme.colorScheme.error
+fun PaymentStatusLabel(paid: Boolean) {
+    val (statusText, color) = if (paid) {
+        "Status: Paid" to MaterialTheme.colorScheme.primary
+    } else {
+        "Status: Unpaid" to MaterialTheme.colorScheme.error
     }
 
     Text(

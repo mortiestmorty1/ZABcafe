@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
@@ -31,6 +33,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -41,6 +44,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.szabist.zabapp1.R
 import com.szabist.zabapp1.data.model.User
 import com.szabist.zabapp1.viewmodel.AuthViewModel
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -108,6 +112,9 @@ fun LoginScreen(
                     containerColor = Color.White,
                     focusedIndicatorColor = Color.Transparent,
                     unfocusedIndicatorColor = Color.Transparent
+                ),
+                keyboardOptions = KeyboardOptions.Default.copy(
+                    imeAction = ImeAction.Next // Move to the next field when done
                 )
             )
             Spacer(modifier = Modifier.height(12.dp))
@@ -127,6 +134,14 @@ fun LoginScreen(
                     containerColor = Color.White,
                     focusedIndicatorColor = Color.Transparent,
                     unfocusedIndicatorColor = Color.Transparent
+                ),
+                keyboardOptions = KeyboardOptions.Default.copy(
+                    imeAction = ImeAction.Done // Specify "Done" action
+                ),
+                keyboardActions = KeyboardActions(
+                    onDone = {
+                        triggerLogin(context, auth, email, password, authViewModel, onLoginSuccess)
+                    }
                 )
             )
             Spacer(modifier = Modifier.height(24.dp))
@@ -134,32 +149,7 @@ fun LoginScreen(
             // Login Button
             Button(
                 onClick = {
-                    if (email.isBlank() || password.isBlank()) {
-                        Toast.makeText(
-                            context,
-                            "Please fill in both email and password",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    } else {
-                        isLoading = true
-                        auth.signInWithEmailAndPassword(email, password)
-                            .addOnCompleteListener { task ->
-                                if (task.isSuccessful) {
-                                    val userId = auth.currentUser?.uid ?: ""
-                                    authViewModel.getUser(userId) { user ->
-                                        isLoading = false
-                                        if (user != null) {
-                                            onLoginSuccess(user)
-                                        } else {
-                                            Toast.makeText(context, "User not found", Toast.LENGTH_SHORT).show()
-                                        }
-                                    }
-                                } else {
-                                    isLoading = false
-                                    Toast.makeText(context, "Authentication failed", Toast.LENGTH_SHORT).show()
-                                }
-                            }
-                    }
+                    triggerLogin(context, auth, email, password, authViewModel, onLoginSuccess)
                 },
                 enabled = !isLoading,
                 modifier = Modifier
@@ -187,4 +177,33 @@ fun LoginScreen(
             }
         }
     }
+}
+private fun triggerLogin(
+    context: android.content.Context,
+    auth: FirebaseAuth,
+    email: String,
+    password: String,
+    authViewModel: AuthViewModel,
+    onLoginSuccess: (User) -> Unit
+) {
+    if (email.isBlank() || password.isBlank()) {
+        Toast.makeText(context, "Please fill in both email and password", Toast.LENGTH_SHORT).show()
+        return
+    }
+
+    auth.signInWithEmailAndPassword(email, password)
+        .addOnCompleteListener { task ->
+            if (task.isSuccessful) {
+                val userId = auth.currentUser?.uid ?: ""
+                authViewModel.getUser(userId) { user ->
+                    if (user != null) {
+                        onLoginSuccess(user)
+                    } else {
+                        Toast.makeText(context, "User not found", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            } else {
+                Toast.makeText(context, "Authentication failed", Toast.LENGTH_SHORT).show()
+            }
+        }
 }

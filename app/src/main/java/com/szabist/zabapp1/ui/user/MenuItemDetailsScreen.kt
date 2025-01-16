@@ -3,16 +3,21 @@ package com.szabist.zabapp1.ui.user
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -26,7 +31,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -55,7 +63,8 @@ fun MenuItemDetailsScreen(
             value = item
         }
     }
-
+    val showDialog = remember { mutableStateOf(false) }
+    val quantity = remember { mutableStateOf(1) }
     Scaffold(
         topBar = {
             TopAppBar(
@@ -144,7 +153,7 @@ fun MenuItemDetailsScreen(
 
                 // Add to Cart Button
                 Button(
-                    onClick = { cartViewModel.addToCart(menuItem, 1) },
+                    onClick = { showDialog.value = true },
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text("Add to Cart")
@@ -156,5 +165,84 @@ fun MenuItemDetailsScreen(
             modifier = Modifier.fillMaxSize().wrapContentSize(Alignment.Center)
         )
     }
+    if (showDialog.value) {
+        menuItemState.value?.let { menuItem ->
+            AddToCartDialog1(
+                menuItem = menuItem,
+                quantity = quantity,
+                onAddToCart = {
+                    cartViewModel.addToCart(menuItem, it)
+                    showDialog.value = false
+                },
+                onDismiss = { showDialog.value = false }
+            )
+        }
+    }
 }
+    @Composable
+    fun AddToCartDialog1(
+        menuItem: MenuItem,
+        quantity: MutableState<Int>,
+        onAddToCart: (Int) -> Unit,
+        onDismiss: () -> Unit
+    ) {
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            title = {
+                Text(
+                    text = "Add to Cart",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            },
+            text = {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = menuItem.name,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Button(
+                            onClick = { if (quantity.value > 1) quantity.value-- },
+                            modifier = Modifier.size(40.dp),
+                            contentPadding = PaddingValues(0.dp)
+                        ) {
+                            Text("-", style = MaterialTheme.typography.bodyLarge)
+                        }
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Text(
+                            text = quantity.value.toString(),
+                            style = MaterialTheme.typography.titleLarge
+                        )
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Button(
+                            onClick = { quantity.value++ },
+                            modifier = Modifier.size(40.dp),
+                            contentPadding = PaddingValues(0.dp)
+                        ) {
+                            Text("+", style = MaterialTheme.typography.bodyLarge)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(onClick = { onAddToCart(quantity.value) }) {
+                    Text("Add")
+                }
+            },
+            dismissButton = {
+                Button(onClick = onDismiss) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+
+
 

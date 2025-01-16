@@ -22,8 +22,9 @@ import com.szabist.zabapp1.ui.theme.Zabapp1Theme
 import com.szabist.zabapp1.ui.user.UserDashboard
 
 class MainActivity : ComponentActivity() {
-    lateinit var navController: NavController
+    private lateinit var navController: NavController
 
+    // Request Notification Permission for Android 13+
     private val requestNotificationPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
             if (isGranted) {
@@ -35,9 +36,12 @@ class MainActivity : ComponentActivity() {
     @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Request notification permission for Android 13+ (API 33)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 1)
+            requestNotificationPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
         }
+
         setContent {
             Zabapp1Theme {
                 navController = rememberNavController()
@@ -54,7 +58,7 @@ class MainActivity : ComponentActivity() {
                     onLoginSuccess = { user ->
                         // Directly navigate with user information
                         if (user.role == "admin") {
-                            navController.navigate("admin_dashboard")
+                            navController.navigate("admin_dashboard/${user.id}")
                         } else {
                             // Pass the entire user object or just the userId
                             navController.navigate("user_dashboard/${user.id}")
@@ -71,9 +75,14 @@ class MainActivity : ComponentActivity() {
                 val userId = backStackEntry.arguments?.getString("userId") ?: ""
                 UserDashboard(userId = userId)
             }
-            composable("admin_dashboard") {
-                AdminDashboard(onLogout = { logout() })
+            composable("admin_dashboard/{adminId}") { backStackEntry ->
+                val adminId = backStackEntry.arguments?.getString("adminId") ?: ""
+                AdminDashboard(
+                    adminId = adminId, // Pass adminId here
+                    onLogout = { logout() }
+                )
             }
+
         }
     }
     var shouldNavigateToLogin = false

@@ -1,6 +1,8 @@
 
 import android.os.Build
+import android.widget.Toast
 import androidx.annotation.RequiresApi
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -25,6 +27,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -38,6 +41,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -45,6 +49,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
@@ -61,6 +66,7 @@ fun ViewOrdersScreen(
     monthlyBillViewModel: MonthlyBillViewModel = viewModel()
 ) {
     val orders by orderViewModel.orders.collectAsState()
+    val context = LocalContext.current
 
     LaunchedEffect(Unit) {
         orderViewModel.loadAllOrders()
@@ -71,7 +77,7 @@ fun ViewOrdersScreen(
     val completedOrders = orders.filter { it.status == "Rejected" || it.status == "Completed" || it.status == "Ready for Pickup" }
 
     var selectedCategory by remember { mutableStateOf<OrderCategory?>(null) }
-
+    val loadingStates = remember { mutableStateMapOf<String, Boolean>() }
     Column(
         modifier = Modifier.fillMaxSize()
     ) {
@@ -87,19 +93,32 @@ fun ViewOrdersScreen(
                 newOrders = newOrders,
                 currentOrders = currentOrders,
                 completedOrders = completedOrders,
+                navController = navController,
                 onBack = { selectedCategory = null },
+                isLoadingStates = loadingStates,
                 onStatusChange = { orderId, newStatus ->
+                    loadingStates[orderId] = true
                     orderViewModel.updateOrderStatus(
                         orderId = orderId,
                         newStatus = newStatus,
+                        context = context,
                         handleMonthlyBill = { acceptedOrder ->
                             monthlyBillViewModel.handleOrder(
                                 order = acceptedOrder,
                                 userId = acceptedOrder.userId,
-                                orderViewModel = orderViewModel
-                            ) { success, _ ->
-                                // Handle success or failure
+                                orderViewModel = orderViewModel,
+                                context = context,
+                            ) { success ->
+                                if (!success) {
+                                    // Show error and reset loading state
+                                    Toast.makeText(context, "Failed to update order status", Toast.LENGTH_SHORT).show()
+                                }
+                                // Reset loading state regardless of success or failure
+                                loadingStates[orderId] = false
+                                // Reload orders to sync with backend
+                                orderViewModel.loadAllOrders()
                             }
+
                         }
                     )
                     orderViewModel.loadAllOrders()
@@ -175,6 +194,7 @@ fun FullScreenCategoryButton(
         }
     }
 }
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OrderCategoryScreen(
@@ -182,7 +202,9 @@ fun OrderCategoryScreen(
     newOrders: List<Order>,
     currentOrders: List<Order>,
     completedOrders: List<Order>,
+    navController: NavController,
     onBack: () -> Unit,
+    isLoadingStates: MutableMap<String, Boolean>,
     onStatusChange: (String, String) -> Unit
 ) {
     val ordersToShow = when (category) {
@@ -192,6 +214,8 @@ fun OrderCategoryScreen(
     }
 
     var searchQuery by remember { mutableStateOf("") }
+    var loadingStates = remember { mutableStateMapOf<String, Boolean>() }
+
     val filteredOrders = ordersToShow.filter { order ->
         order.id.contains(searchQuery, ignoreCase = true) ||
                 order.userName.contains(searchQuery, ignoreCase = true) ||
@@ -217,7 +241,7 @@ fun OrderCategoryScreen(
                 .fillMaxSize()
                 .padding(horizontal = 16.dp)
         ) {
-            // Enhanced Search Bar
+            // Search Bar
             TextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
@@ -250,7 +274,12 @@ fun OrderCategoryScreen(
                     modifier = Modifier.fillMaxSize()
                 ) {
                     items(filteredOrders, key = { it.id }) { order ->
-                        EnhancedOrderItem(order = order, onStatusChange = onStatusChange)
+                        EnhancedOrderItem(
+                            order = order,
+                            navController = navController,
+                            isLoading = isLoadingStates[order.id] ?: false,
+                            onStatusChange = onStatusChange
+                        )
                     }
                 }
             }
@@ -260,11 +289,17 @@ fun OrderCategoryScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun EnhancedOrderItem(order: Order, onStatusChange: (String, String) -> Unit) {
+fun EnhancedOrderItem(
+    order: Order,
+    navController: NavController,
+    isLoading: Boolean,
+    onStatusChange: (String, String) -> Unit
+) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 8.dp),
+            .padding(horizontal = 8.dp)
+            .clickable { navController.navigate("admin_order_details/${order.id}") },
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(6.dp)
@@ -315,7 +350,8 @@ fun EnhancedOrderItem(order: Order, onStatusChange: (String, String) -> Unit) {
                             "Reject" to MaterialTheme.colorScheme.error
                         ),
                         icons = listOf(Icons.Filled.ThumbUp, Icons.Filled.Delete),
-                        onClick = { action -> onStatusChange(order.id, action) }
+                        onClick = { action -> onStatusChange(order.id, action) },
+                        isLoading = isLoading
                     )
                 }
                 "Accepted", "Prepare" -> {
@@ -325,14 +361,16 @@ fun EnhancedOrderItem(order: Order, onStatusChange: (String, String) -> Unit) {
                             "Ready for Pickup" to MaterialTheme.colorScheme.secondary
                         ),
                         icons = listOf(Icons.Filled.Build, Icons.Filled.LocationOn),
-                        onClick = { action -> onStatusChange(order.id, action) }
+                        onClick = { action -> onStatusChange(order.id, action) },
+                        isLoading = isLoading
                     )
                 }
                 "Ready for Pickup" -> {
                     OrderActionRow(
                         actions = listOf("Completed" to MaterialTheme.colorScheme.primary),
                         icons = listOf(Icons.Filled.Done),
-                        onClick = { action -> onStatusChange(order.id, action) }
+                        onClick = { action -> onStatusChange(order.id, action) },
+                        isLoading = isLoading
                     )
                 }
             }
@@ -343,7 +381,8 @@ fun EnhancedOrderItem(order: Order, onStatusChange: (String, String) -> Unit) {
 fun OrderActionRow(
     actions: List<Pair<String, Color>>,
     icons: List<ImageVector>,
-    onClick: (String) -> Unit
+    onClick: (String) -> Unit,
+    isLoading: Boolean
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -351,22 +390,30 @@ fun OrderActionRow(
     ) {
         actions.forEachIndexed { index, (action, color) ->
             Button(
-                onClick = { onClick(action) },
+                onClick = { if (!isLoading) onClick(action) },
                 colors = ButtonDefaults.buttonColors(containerColor = color),
                 modifier = Modifier
-                    .size(width = 140.dp, height = 48.dp)
+                    .size(width = 140.dp, height = 48.dp),
+                enabled = !isLoading
             ) {
-                Icon(
-                    imageVector = icons[index],
-                    contentDescription = action,
-                    modifier = Modifier.size(20.dp)
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(
-                    text = action,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = Color.White
-                )
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        color = Color.White,
+                        modifier = Modifier.size(20.dp)
+                    )
+                } else {
+                    Icon(
+                        imageVector = icons[index],
+                        contentDescription = action,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = action,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = Color.White
+                    )
+                }
             }
         }
     }

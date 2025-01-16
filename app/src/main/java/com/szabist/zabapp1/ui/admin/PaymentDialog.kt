@@ -19,7 +19,6 @@ fun PaymentDialog(
     totalAmount: Double,
     arrears: Double,
     onConfirmFullPayment: () -> Unit,
-    onConfirmPartialPayment: (Double) -> Unit,
     onDismiss: () -> Unit
 ) {
     AlertDialog(
@@ -28,7 +27,11 @@ fun PaymentDialog(
         text = {
             Column {
                 Text("Total Amount: $$totalAmount", style = MaterialTheme.typography.bodyLarge)
-                Text("Current Arrears: $$arrears", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.error)
+                Text(
+                    "Current Arrears: $$arrears",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.error
+                )
                 Spacer(modifier = Modifier.height(16.dp))
                 Button(
                     onClick = onConfirmFullPayment,
@@ -36,17 +39,6 @@ fun PaymentDialog(
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                 ) {
                     Text("Mark as Fully Paid", color = MaterialTheme.colorScheme.onPrimary)
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-                Button(
-                    onClick = {
-                        val partialAmount = totalAmount * 0.5 // Example: 50% partial payment
-                        onConfirmPartialPayment(partialAmount)
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
-                ) {
-                    Text("Mark as Partially Paid (50%)", color = MaterialTheme.colorScheme.onSecondary)
                 }
             }
         },

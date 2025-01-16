@@ -168,7 +168,6 @@ fun MenuItemDetailsScreen(
                             tint = MaterialTheme.colorScheme.onError
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Delete", color = MaterialTheme.colorScheme.onError)
                     }
                     Button(
                         onClick = { navController.popBackStack() },
@@ -181,7 +180,6 @@ fun MenuItemDetailsScreen(
                             tint = MaterialTheme.colorScheme.onPrimary
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Back", color = MaterialTheme.colorScheme.onPrimary)
                     }
                 }
             }

@@ -38,7 +38,7 @@ import com.szabist.zabapp1.viewmodel.OrderViewModel
 fun OrderStatusScreen(navController: NavController, userId: String, orderViewModel: OrderViewModel = viewModel()) {
     // Load orders when the screen is first composed
     LaunchedEffect(userId) {
-        orderViewModel.loadOrders(userId)
+        orderViewModel.observeUserOrders(userId)
     }
 
     // Collect orders from the ViewModel

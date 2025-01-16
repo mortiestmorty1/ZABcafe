@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBox
 import androidx.compose.material.icons.filled.List
@@ -24,6 +25,7 @@ import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -35,6 +37,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -54,7 +58,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.szabist.zabapp1.MainActivity
 import com.szabist.zabapp1.R
-import com.szabist.zabapp1.viewmodel.AdminViewModel
+import com.szabist.zabapp1.viewmodel.UserViewModel
 import java.time.YearMonth
 
 
@@ -62,9 +66,11 @@ import java.time.YearMonth
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AdminDashboard(
+    adminId: String,
     onLogout: () -> Unit,
-    adminViewModel: AdminViewModel = viewModel()
+    userViewModel: UserViewModel = viewModel()
 ) {
+    val adminDetails by userViewModel.currentUser.collectAsState()
     val activity = LocalContext.current as MainActivity
     val navController = rememberNavController()
     val items = listOf(
@@ -153,7 +159,10 @@ fun AdminDashboard(
                 exit = slideOutHorizontally(targetOffsetX = { -it }, animationSpec = tween(300)),
                 modifier = Modifier.zIndex(1f) // Ensures visibility over other layers
             ) {
-                AdminAccountSection(onLogout = { activity.logout() })
+                AdminAccountSection(
+                    adminId = adminId, // Pass the adminId here
+                    onLogout = { activity.logout() }
+                )
             }
 
             Column(modifier = Modifier.fillMaxWidth()) {
@@ -208,6 +217,11 @@ fun AdminDashboard(
                         val yearMonth = backStackEntry.arguments?.getString("yearMonth") ?: ""
                         UserMonthlyBillsScreen(navController = navController, userId = userId, yearMonth = yearMonth)
                     }
+                    composable("admin_order_details/{orderId}") { backStackEntry ->
+                        val orderId = backStackEntry.arguments?.getString("orderId") ?: ""
+                        AdminOrderDetailsScreen(navController = navController, orderId = orderId)
+                    }
+
 
                     composable("bill_details/{billId}") { backStackEntry ->
                         val billId = backStackEntry.arguments?.getString("billId") ?: return@composable
@@ -220,43 +234,83 @@ fun AdminDashboard(
 }
 
 @Composable
-fun AdminAccountSection(onLogout: () -> Unit) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth(0.6f)
-            .padding(16.dp)
-            .background(MaterialTheme.colorScheme.surface, shape = MaterialTheme.shapes.medium)
-            .padding(16.dp),
-        horizontalAlignment = Alignment.Start,
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
+fun AdminAccountSection(
+    userViewModel: UserViewModel = viewModel(),
+    adminId: String, // Pass the admin's userId
+    onLogout: () -> Unit
+) {
+    val adminState by userViewModel.currentUser.collectAsState(initial = null)
+
+    // Fetch the admin details when the Composable is first launched
+    LaunchedEffect(adminId) {
+        userViewModel.fetchUserById(adminId)
+    }
+
+    adminState?.let { admin ->
+        Column(
+            modifier = Modifier
+                .fillMaxWidth(0.8f)
+                .padding(16.dp)
+                .background(MaterialTheme.colorScheme.surface, shape = MaterialTheme.shapes.medium)
+                .padding(16.dp),
+            horizontalAlignment = Alignment.Start,
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // Display Admin Details
+            Text(
+                text = "Name: ${admin.username}",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = "Email: ${admin.email}",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = "Contact: ${admin.contactNumber}",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = "Role: ${admin.role}",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+
+            Spacer(modifier = Modifier.weight(1f)) // Pushes the logout button to the bottom
+
+            // Logout Button
+            Button(
+                onClick = onLogout,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                shape = MaterialTheme.shapes.medium
+            ) {
+                Icon(
+                    imageVector = Icons.Default.AccountBox,
+                    contentDescription = "Logout",
+                    tint = MaterialTheme.colorScheme.onError
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Logout", color = MaterialTheme.colorScheme.onError)
+            }
+        }
+    } ?: run {
+        // Loading state if admin details are not yet fetched
         Text(
-            text = "Admin Account",
+            text = "Loading admin details...",
             style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+                .background(MaterialTheme.colorScheme.surface, shape = MaterialTheme.shapes.medium)
+                .padding(16.dp),
             color = MaterialTheme.colorScheme.onSurface
         )
-        Spacer(modifier = Modifier.height(16.dp))
-        Text(
-            text = "Name: Admin",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Text(
-            text = "Role: Super Admin",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Button(
-            onClick = onLogout,
-            modifier = Modifier.fillMaxWidth(),
-            shape = MaterialTheme.shapes.medium
-        ) {
-            Text("Logout", style = MaterialTheme.typography.bodyLarge)
-        }
     }
 }
+
 
 // AdminNavItem remains the same as before
 sealed class AdminNavItem(val route: String, val icon: ImageVector, val title: String) {

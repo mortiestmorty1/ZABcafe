@@ -51,8 +51,8 @@ fun ManageUsersScreen(navController: NavController, userViewModel: UserViewModel
     val users by userViewModel.users.collectAsState()
     var searchQuery by remember { mutableStateOf("") }
 
-    LaunchedEffect(Unit) {
-        Log.d("ManageUsersScreen", "Fetching users on screen load")
+    LaunchedEffect(navController.currentBackStackEntry) {
+        Log.d("ManageUsersScreen", "Fetching users on screen load or re-visit")
         userViewModel.fetchUsers()
     }
 
@@ -97,7 +97,6 @@ fun ManageUsersScreen(navController: NavController, userViewModel: UserViewModel
             ) {
                 Icon(Icons.Filled.Add, contentDescription = "Add User")
                 Spacer(modifier = Modifier.width(8.dp)) // Spacing between icon and text
-                Text("Add")
             }
 
         }

@@ -1,8 +1,10 @@
 package com.szabist.zabapp1.data.repository
 
+import android.content.Context
 import android.util.Log
 import com.google.firebase.database.DatabaseReference
 import com.szabist.zabapp1.data.firebase.FirebaseService
+import com.szabist.zabapp1.data.firebase.NotificationHelper
 import com.szabist.zabapp1.data.model.MonthlyBill
 
 class MonthlyBillRepository {
@@ -42,15 +44,28 @@ class MonthlyBillRepository {
     }
 
     // Update an existing bill
-    fun updateMonthlyBill(bill: MonthlyBill, callback: (Boolean) -> Unit) {
+    fun updateMonthlyBill(bill: MonthlyBill, context: Context, callback: (Boolean) -> Unit) {
         if (bill.billId.isNotEmpty()) {
             billsRef.child(bill.billId).setValue(bill).addOnSuccessListener {
+                // Send notification for bill update
+                val notificationHelper = NotificationHelper(context)
+                notificationHelper.sendNotification(
+                    title = "Bill Update",
+                    message = "Your bill for ${bill.month} has been updated.",
+                    type = "bill",
+                    id = bill.billId
+                )
                 callback(true)
             }.addOnFailureListener {
                 callback(false)
             }
+        } else {
+            callback(false)
         }
     }
+
+
+
 
     // Fetch a bill by its ID
     fun getBillById(billId: String, callback: (MonthlyBill?) -> Unit) {
@@ -74,22 +89,7 @@ class MonthlyBillRepository {
     }
 
     // Carry over arrears to the next month's bill
-    fun carryOverArrearsToNewBill(userId: String, arrears: Double, newMonth: String, callback: (Boolean) -> Unit) {
-        getMonthlyBillByMonth(userId, newMonth) { existingBill ->
-            if (existingBill != null) {
-                existingBill.amount += arrears
-                updateMonthlyBill(existingBill, callback)
-            } else {
-                val newBill = MonthlyBill(
-                    userId = userId,
-                    month = newMonth,
-                    amount = arrears,
-                    arrears = arrears
-                )
-                addMonthlyBill(newBill, callback)
-            }
-        }
-    }
+
 
     // Fetch a bill by userId and month
     fun getMonthlyBillByMonth(userId: String, month: String, callback: (MonthlyBill?) -> Unit) {

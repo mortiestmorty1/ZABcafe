@@ -1,9 +1,11 @@
 package com.szabist.zabapp1.viewmodel
+import android.content.Context
 import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.szabist.zabapp1.data.firebase.NotificationHelper
 import com.szabist.zabapp1.data.model.MonthlyBill
 import com.szabist.zabapp1.data.model.Order
 import com.szabist.zabapp1.data.repository.MonthlyBillRepository
@@ -23,20 +25,24 @@ class MonthlyBillViewModel : ViewModel() {
     val monthlyBills: StateFlow<List<MonthlyBill>> = _monthlyBills
 
     @RequiresApi(Build.VERSION_CODES.O)
-    fun handleOrder(order: Order, userId: String, orderViewModel: OrderViewModel, callback: (Boolean, String?) -> Unit) {
+    fun handleOrder(
+        order: Order,
+        userId: String,
+        orderViewModel: OrderViewModel,
+        context: Context,
+        callback: (Boolean) -> Unit
+    ) {
         viewModelScope.launch(Dispatchers.IO) {
             val month = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM"))
             order.timestamp = Date()
             monthlyBillRepository.getMonthlyBillByMonth(userId, month) { existingBill ->
                 if (existingBill != null) {
-                    // Add the order to the existing bill
+                    // Update existing bill
                     existingBill.orders += order
                     existingBill.amount += order.totalAmount
-                    updateMonthlyBill(existingBill) { success ->
-                        callback(success, order.id)
-                    }
+                    updateMonthlyBill(existingBill, context, callback)
                 } else {
-                    // Create a new bill if none exists
+                    // Create a new bill
                     val newBill = MonthlyBill(
                         userId = userId,
                         month = month,
@@ -44,24 +50,32 @@ class MonthlyBillViewModel : ViewModel() {
                         orders = listOf(order),
                         ordersMade = true
                     )
-                    addMonthlyBill(newBill) { success ->
-                        callback(success, order.id)
-                    }
+                    addMonthlyBill(newBill, callback)
                 }
             }
         }
     }
 
-
     @RequiresApi(Build.VERSION_CODES.O)
-    fun handleFullPayment(billId: String, callback: (Boolean) -> Unit) {
+    fun handleFullPayment(billId: String, context: Context, callback: (Boolean) -> Unit) {
         viewModelScope.launch(Dispatchers.IO) {
             monthlyBillRepository.getBillById(billId) { bill ->
                 bill?.let {
                     it.paid = true
                     it.partialPaid = false
-                    monthlyBillRepository.updateMonthlyBill(it) { success ->
-                        if (success) _monthlyBills.value = _monthlyBills.value.map { b -> if (b.billId == billId) it else b }
+                    monthlyBillRepository.updateMonthlyBill(it, context) { success -> // Pass context
+                        if (success) {
+                            _monthlyBills.value = _monthlyBills.value.map { b -> if (b.billId == billId) it else b }
+
+                            // Notify user about full payment
+                            val notificationHelper = NotificationHelper(context)
+                            notificationHelper.sendNotification(
+                                title = "Bill Payment",
+                                message = "Thank you for paying your bill for ${it.month}.",
+                                type = "bill",
+                                id = billId
+                            )
+                        }
                         callback(success)
                     }
                 }
@@ -69,9 +83,13 @@ class MonthlyBillViewModel : ViewModel() {
         }
     }
 
-    // Handle partial payment
     @RequiresApi(Build.VERSION_CODES.O)
-    fun handlePartialPayment(billId: String, partialPaymentAmount: Double, callback: (Boolean) -> Unit) {
+    fun handlePartialPayment(
+        billId: String,
+        partialPaymentAmount: Double,
+        context: Context,
+        callback: (Boolean) -> Unit
+    ) {
         viewModelScope.launch(Dispatchers.IO) {
             monthlyBillRepository.getBillById(billId) { bill ->
                 bill?.let {
@@ -79,8 +97,19 @@ class MonthlyBillViewModel : ViewModel() {
                     it.paid = true
                     it.partialPaymentAmount = partialPaymentAmount
                     it.arrears = it.amount - partialPaymentAmount
-                    monthlyBillRepository.updateMonthlyBill(it) { success ->
-                        if (success) _monthlyBills.value = _monthlyBills.value.map { b -> if (b.billId == billId) it else b }
+                    monthlyBillRepository.updateMonthlyBill(it, context) { success -> // Pass context
+                        if (success) {
+                            _monthlyBills.value = _monthlyBills.value.map { b -> if (b.billId == billId) it else b }
+
+                            // Notify user about partial payment
+                            val notificationHelper = NotificationHelper(context)
+                            notificationHelper.sendNotification(
+                                title = "Partial Payment",
+                                message = "Your partial payment of PKR $partialPaymentAmount for ${it.month} has been received. Remaining balance: PKR ${it.arrears}.",
+                                type = "bill",
+                                id = billId
+                            )
+                        }
                         callback(success)
                     }
                 }
@@ -88,28 +117,6 @@ class MonthlyBillViewModel : ViewModel() {
         }
     }
 
-
-    fun carryOverArrearsToNextBill(userId: String, arrears: Double, month: String, callback: (Boolean) -> Unit) {
-        viewModelScope.launch(Dispatchers.IO) {
-            monthlyBillRepository.getMonthlyBillByMonth(userId, month) { existingBill ->
-                if (existingBill != null) {
-                    existingBill.amount += arrears  // Add arrears to the existing bill amount
-                    existingBill.arrears += arrears  // Update the arrears field
-                    monthlyBillRepository.updateMonthlyBill(existingBill, callback)
-                } else {
-                    // If there is no bill for the next month, create a new one with the arrears
-                    val newBill = MonthlyBill(
-                        userId = userId,
-                        month = month,
-                        amount = arrears,
-                        arrears = arrears,
-                        ordersMade = false  // No orders yet for the new month
-                    )
-                    addMonthlyBill(newBill, callback)
-                }
-            }
-        }
-    }
 
     fun getBillById(billId: String) {
         viewModelScope.launch(Dispatchers.IO) {
@@ -139,22 +146,17 @@ class MonthlyBillViewModel : ViewModel() {
         monthlyBillRepository.addMonthlyBill(bill, callback)
     }
 
-    private fun updateMonthlyBill(bill: MonthlyBill, callback: (Boolean) -> Unit) {
-        monthlyBillRepository.updateMonthlyBill(bill) {
-            callback(true)
-            loadBillsForUser(bill.userId)
-        }
-    }
-
-
-
-    fun flagBillForAdminApproval(bill: MonthlyBill, callback: (Boolean) -> Unit) {
-        viewModelScope.launch(Dispatchers.IO) {
-            monthlyBillRepository.updateMonthlyBill(bill) {
-                callback(true)
+    private fun updateMonthlyBill(bill: MonthlyBill, context: Context, callback: (Boolean) -> Unit) {
+        monthlyBillRepository.updateMonthlyBill(bill, context) { success ->
+            if (success) {
+                loadBillsForUser(bill.userId)
             }
+            callback(success)
         }
     }
+
+
+
     fun loadBillsForUserAndMonth(userId: String, month: String) {
         Log.d("MonthlyBillViewModel", "Loading bills for userId: $userId and month: $month")
 

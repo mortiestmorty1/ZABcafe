@@ -51,7 +51,7 @@ fun ManageMenuScreen(navController: NavController, menuViewModel: MenuViewModel 
     val menuItems by menuViewModel.menuItems.collectAsState()
     var searchQuery by remember { mutableStateOf("") }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(navController.currentBackStackEntry) {
         menuViewModel.loadMenuItems()
     }
 
@@ -76,7 +76,7 @@ fun ManageMenuScreen(navController: NavController, menuViewModel: MenuViewModel 
             TextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
-                placeholder = { Text("Search Users") },
+                placeholder = { Text("Search Menu") },
                 modifier = Modifier
                     .weight(0.7f)
                     .height(56.dp), // Adjust height to make it look like a proper input field
@@ -101,7 +101,6 @@ fun ManageMenuScreen(navController: NavController, menuViewModel: MenuViewModel 
             ) {
                 Icon(Icons.Filled.Add, contentDescription = "Add User")
                 Spacer(modifier = Modifier.width(8.dp)) // Spacing between icon and text
-                Text("Add")
             }
         }
 

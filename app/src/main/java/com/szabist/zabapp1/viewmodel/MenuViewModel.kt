@@ -34,7 +34,7 @@ class MenuViewModel : ViewModel() {
 
     fun loadMenuItems() {
         viewModelScope.launch(Dispatchers.IO) {
-            menuRepository.getMenuItems { items ->
+            menuRepository.getMenuItemsRealtime { items ->
                 _menuItems.value = items
             }
         }

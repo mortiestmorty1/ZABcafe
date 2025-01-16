@@ -1,5 +1,7 @@
 package com.szabist.zabapp1.viewmodel
 
+import android.annotation.SuppressLint
+import android.content.Context
 import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
@@ -39,6 +41,7 @@ class OrderViewModel : ViewModel() {
             }
         }
     }
+
     @RequiresApi(Build.VERSION_CODES.O)
 
 
@@ -55,7 +58,7 @@ class OrderViewModel : ViewModel() {
         viewModelScope.launch(Dispatchers.IO) {
             orderRepository.getOrders(userId) { orders ->
                 // Filter out orders with status "Ready for Pickup" and "Rejected"
-                val activeOrders = orders.filter { it.status !in listOf("Rejected" ,"Completed") }
+                val activeOrders = orders.filter { it.status !in listOf("Rejected", "Completed") }
                 _orders.value = activeOrders
                 Log.d("OrderViewModel", "Active orders loaded: $activeOrders")
             }
@@ -70,33 +73,41 @@ class OrderViewModel : ViewModel() {
             }
         }
     }
+
     fun loadPastOrdersReadyForPickup(userId: String) {
         viewModelScope.launch(Dispatchers.IO) {
             orderRepository.getAllOrders { allOrders ->
                 // Filter orders with status "Ready for Pickup"
-                val readyForPickupOrders = allOrders.filter { it.status.equals("Ready for Pickup", ignoreCase = true) }
+                val readyForPickupOrders =
+                    allOrders.filter { it.status.equals("Ready for Pickup", ignoreCase = true) }
                 _pastOrders.value = readyForPickupOrders
-                Log.d("OrderViewModel", "Loaded past orders ready for pickup: $readyForPickupOrders")
+                Log.d(
+                    "OrderViewModel",
+                    "Loaded past orders ready for pickup: $readyForPickupOrders"
+                )
             }
         }
     }
 
-        fun updateOrder(order: Order) {
-            viewModelScope.launch(Dispatchers.IO) {
-                orderRepository.updateOrder(order)
-                loadOrders(order.userId)  // Re-load orders to refresh the list
-            }
+    fun updateOrder(order: Order) {
+        viewModelScope.launch(Dispatchers.IO) {
+            orderRepository.updateOrder(order)
+            loadOrders(order.userId)  // Re-load orders to refresh the list
         }
+    }
 
-    @RequiresApi(Build.VERSION_CODES.O)
     fun updateOrderStatus(
         orderId: String,
         newStatus: String,
+        context: Context,
         handleMonthlyBill: (Order) -> Unit = {},
-        onComplete: () -> Unit = {}
+        onComplete: (Boolean) -> Unit = {}
     ) {
+        // Optimistically update the UI
+        updateOrderInState(orderId, newStatus)
+
+        // Perform backend update asynchronously
         viewModelScope.launch(Dispatchers.IO) {
-            // Map or enforce status to backend-required format
             val validStatuses = mapOf(
                 "Accept" to "Accepted",
                 "Reject" to "Rejected",
@@ -104,26 +115,45 @@ class OrderViewModel : ViewModel() {
                 "Ready for Pickup" to "Ready for Pickup",
                 "Completed" to "Completed"
             )
-            val finalStatus = validStatuses[newStatus] ?: newStatus // Default to newStatus if not in map
+            val finalStatus = validStatuses[newStatus] ?: newStatus
 
-            orderRepository.updateOrderStatus(orderId, finalStatus) { success ->
+            orderRepository.updateOrderStatus(context, orderId, finalStatus) { success ->
                 if (success) {
+                    // Fetch the updated order to ensure state consistency
                     orderRepository.getOrderById(orderId) { order ->
                         if (order != null) {
-                            // Handle monthly bill logic if order is accepted
                             if (finalStatus == "Accepted" && order.paymentMethod == "bill") {
                                 handleMonthlyBill(order)
                             }
-                            loadAllOrders() // Refresh orders
+                            // Update the local state with the updated order
+                            updateOrderInState(order.id, order.status)
                         }
+                        // Notify the caller that the update was successful
+                        onComplete(true)
                     }
+                } else {
+                    // Notify the caller that the update failed
+                    onComplete(false)
                 }
-                onComplete()
+            }
+        }
+    }
+
+    fun updateOrderInState(orderId: String, newStatus: String) {
+        viewModelScope.launch(Dispatchers.Main) {
+            // Map orders to update the status or remove it from the list
+            _orders.value = _orders.value.map { order ->
+                if (order.id == orderId) {
+                    order.copy(status = newStatus) // Update the status
+                } else {
+                    order
+                }
             }
         }
     }
 
 
+    @SuppressLint("StateFlowValueCalledInComposition")
     fun loadOrderById(orderId: String) {
         viewModelScope.launch(Dispatchers.IO) {
             orderRepository.getOrderById(orderId) { order ->
@@ -133,11 +163,32 @@ class OrderViewModel : ViewModel() {
     }
 
 
-        fun deleteOrder(orderId: String, userId: String) {
-            viewModelScope.launch(Dispatchers.IO) {
-                orderRepository.deleteOrder(orderId)
-                loadOrders(userId)  // Re-load orders after deleting
+    fun deleteOrder(orderId: String, userId: String, onSuccess: () -> Unit, onFailure: () -> Unit) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val success = orderRepository.deleteOrder(orderId)
+            viewModelScope.launch(Dispatchers.Main) {
+                if (success) {
+                    loadOrders(userId)  // Refresh orders for the user
+                    onSuccess()
+                } else {
+                    onFailure()
+                }
             }
         }
     }
+    fun observeOrderStatusChanges(userId: String, onStatusChanged: (Order) -> Unit) {
+        viewModelScope.launch(Dispatchers.IO) {
+            orderRepository.observeOrderStatusChanges(userId, onStatusChanged)
+        }
+    }
+    fun observeUserOrders(userId: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            orderRepository.observeOrders(userId) { updatedOrders ->
+                _orders.value = updatedOrders
+                Log.d("OrderViewModel", "Real-time orders updated: $updatedOrders")
+            }
+        }
+    }
+
+}
 

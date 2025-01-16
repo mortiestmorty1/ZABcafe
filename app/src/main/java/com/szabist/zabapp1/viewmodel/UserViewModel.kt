@@ -49,13 +49,14 @@ class UserViewModel : ViewModel() {
     fun addUserWithAuth(user: User, password: String, onComplete: (Boolean, String?) -> Unit) {
         viewModelScope.launch(Dispatchers.IO) {
             userRepository.addUserWithAuth(user, password) { success, errorMessage ->
-                if (success) {
-                    fetchUsers() // Refresh users list after adding
+                // Switch back to the main thread for UI updates
+                viewModelScope.launch(Dispatchers.Main) {
+                    onComplete(success, errorMessage)
                 }
-                onComplete(success, errorMessage)
             }
         }
     }
+
 
 
     fun updateUser(user: User) {

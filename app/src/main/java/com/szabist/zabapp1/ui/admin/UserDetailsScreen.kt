@@ -153,11 +153,7 @@ fun UserDetailsScreen(navController: NavController, userId: String, userViewMode
                     tint = MaterialTheme.colorScheme.onError
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "Delete User",
-                    color = MaterialTheme.colorScheme.onError,
-                    style = MaterialTheme.typography.bodyLarge
-                )
+
             }
         } ?: Text(
             "Loading user details...",

@@ -62,9 +62,9 @@ fun MenuScreen(
     var searchQuery by remember { mutableStateOf("") }
 
     val filteredMenuItems = menuItems.filter {
-        it.name.contains(searchQuery, ignoreCase = true) ||
+        it.available && (it.name.contains(searchQuery, ignoreCase = true) ||
                 (menuViewModel.getCategoryNameById(it.categoryId)
-                    ?.contains(searchQuery, ignoreCase = true) == true)
+                    ?.contains(searchQuery, ignoreCase = true) == true))
     }
 
     Column(modifier = Modifier.padding(16.dp)) {
@@ -103,29 +103,22 @@ fun MenuScreen(
             modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            items(filteredMenuItems.chunked(2)) { rowItems ->
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    rowItems.forEach { menuItem ->
-                        MenuItemCard(
-                            menuItem = menuItem,
-                            onAddToCart = { quantity ->
-                                coroutineScope.launch {
-                                    cartViewModel.addToCart(menuItem, quantity)
-                                }
-                            },
-                            onClick = {
-                                navController.navigate("menu_item_details/${menuItem.id}")
-                            }
-                        )
+            items(filteredMenuItems) { menuItem ->
+                MenuItemCard(
+                    menuItem = menuItem,
+                    onAddToCart = { quantity ->
+                        coroutineScope.launch {
+                            cartViewModel.addToCart(menuItem, quantity)
+                        }
+                    },
+                    onClick = {
+                        navController.navigate("menu_item_details/${menuItem.id}")
                     }
-                }
+                )
             }
         }
-    }
-}
+            }
+        }
 
 @Composable
 fun MenuItemCard(
@@ -186,7 +179,7 @@ fun MenuItemCard(
 
             // Add to Cart Button
             Button(
-                onClick = { onAddToCart(1) },
+                onClick = { showDialog.value = true },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(48.dp),
@@ -196,10 +189,6 @@ fun MenuItemCard(
             }
         }
     }
-
-
-
-
     if (showDialog.value) {
         AddToCartDialog(
             menuItem = menuItem,

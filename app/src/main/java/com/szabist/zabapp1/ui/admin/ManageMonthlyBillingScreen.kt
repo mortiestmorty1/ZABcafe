@@ -1,5 +1,6 @@
 package com.szabist.zabapp1.ui.admin
 
+import android.content.Context
 import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.Column
@@ -25,6 +26,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.szabist.zabapp1.data.model.MonthlyBill
@@ -37,7 +39,7 @@ fun ManageMonthlyBillingScreen(
     monthlyBillViewModel: MonthlyBillViewModel = viewModel()
 ) {
     val bills by monthlyBillViewModel.monthlyBills.collectAsState()
-
+    val context = LocalContext.current
     LaunchedEffect(Unit) {
         monthlyBillViewModel.loadAllBills()
     }
@@ -47,7 +49,7 @@ fun ManageMonthlyBillingScreen(
     ) { paddingValues ->
         LazyColumn(modifier = Modifier.padding(paddingValues).padding(16.dp)) {
             items(bills) { bill ->
-                MonthlyBillItem(bill, monthlyBillViewModel)
+                MonthlyBillItem(bill, monthlyBillViewModel, context)
             }
         }
     }
@@ -56,7 +58,7 @@ fun ManageMonthlyBillingScreen(
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MonthlyBillItem(bill: MonthlyBill, monthlyBillViewModel: MonthlyBillViewModel) {
+fun MonthlyBillItem(bill: MonthlyBill, monthlyBillViewModel: MonthlyBillViewModel, context: Context) {
     var showPaymentDialog by remember { mutableStateOf(false) }
 
     Card(
@@ -74,7 +76,7 @@ fun MonthlyBillItem(bill: MonthlyBill, monthlyBillViewModel: MonthlyBillViewMode
 
             if (!bill.paid) {
                 Button(onClick = { showPaymentDialog = true }) {
-                    Text("Mark as Paid / Partially Paid")
+                    Text("Mark as Paid")
                 }
             }
         }
@@ -85,14 +87,8 @@ fun MonthlyBillItem(bill: MonthlyBill, monthlyBillViewModel: MonthlyBillViewMode
             totalAmount = bill.amount,
             arrears = bill.arrears,
             onConfirmFullPayment = {
-                monthlyBillViewModel.handleFullPayment(bill.billId) { success ->
+                monthlyBillViewModel.handleFullPayment(bill.billId, context) { success ->
                     if (success) println("Bill marked as fully paid.")
-                }
-                showPaymentDialog = false
-            },
-            onConfirmPartialPayment = { partialPaymentAmount ->
-                monthlyBillViewModel.handlePartialPayment(bill.billId, partialPaymentAmount) { success ->
-                    if (success) println("Bill marked as partially paid with arrears.")
                 }
                 showPaymentDialog = false
             },

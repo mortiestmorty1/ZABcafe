@@ -62,12 +62,13 @@ import com.szabist.zabapp1.MainActivity
 import com.szabist.zabapp1.R
 import com.szabist.zabapp1.data.model.User
 import com.szabist.zabapp1.viewmodel.CartViewModel
+import com.szabist.zabapp1.viewmodel.OrderViewModel
 import com.szabist.zabapp1.viewmodel.UserViewModel
 
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun UserDashboard(userId: String, userViewModel: UserViewModel = viewModel(), cartViewModel: CartViewModel = viewModel()) {
+fun UserDashboard(userId: String, userViewModel: UserViewModel = viewModel(), cartViewModel: CartViewModel = viewModel(),orderViewModel: OrderViewModel = viewModel()) {
     val activity = LocalContext.current as MainActivity
     val navController = rememberNavController()
     val items = listOf(
@@ -83,6 +84,8 @@ fun UserDashboard(userId: String, userViewModel: UserViewModel = viewModel(), ca
     // Call the fetchUserDetails function when the screen is composed
     LaunchedEffect(userId) {
         userViewModel.fetchUserDetails(userId)
+        orderViewModel.loadOrders(userId) // Load active orders for the user
+        orderViewModel.loadPastOrders(userId) // Load past orders
     }
 
     // Observe the currentUser state from the ViewModel
@@ -221,18 +224,26 @@ fun UserDashboard(userId: String, userViewModel: UserViewModel = viewModel(), ca
                             viewModel = viewModel()
                         )
                     }
-                    composable("order_details/{orderId}?fromCheckout={fromCheckout}", arguments = listOf(
-                        navArgument("fromCheckout") { defaultValue = "false" }
-                    )) { backStackEntry ->
+                    composable(
+                        "order_details/{orderId}?fromCheckout={fromCheckout}&userId={userId}",
+                        arguments = listOf(
+                            navArgument("fromCheckout") { defaultValue = "false" },
+                            navArgument("userId") { defaultValue = "" }
+                        )
+                    ) { backStackEntry ->
                         val orderId = backStackEntry.arguments?.getString("orderId") ?: ""
                         val fromCheckout = backStackEntry.arguments?.getString("fromCheckout")?.toBoolean() ?: false
+                        val userId = backStackEntry.arguments?.getString("userId") ?: ""
+
                         OrderDetailsScreen(
                             navController = navController,
                             orderId = orderId,
                             fromCheckout = fromCheckout,
+                            userId = userId,
                             orderViewModel = viewModel()
                         )
                     }
+
                 }
             }
         }
